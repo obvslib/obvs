@@ -1,13 +1,28 @@
 # Getting Started
 
 This document contains instructions to get a fully working development environment for running this repo.
+Currently, these instructions cover macOS, Ubuntu, zsh and bash.
 
 
 ## 1. pyenv
 
-Install here: [https://github.com/pyenv/pyenv#homebrew-on-macos]
+### Installation on macOS
 
-Configure by adding the following to your `~/.zshrc` or equivalent:
+Follow instructions on: https://github.com/pyenv/pyenv#homebrew-on-macos
+
+### Installation on Ubuntu
+
+```sh
+# Install pre-requisites
+sudo apt update; sudo apt install build-essential libssl-dev zlib1g-dev \                       
+libbz2-dev libreadline-dev libsqlite3-dev curl \                                         
+libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+
+# Install pyenv
+curl https://pyenv.run | bash
+```
+
+Configure by adding the following to your `~/.zshrc` or `~/.bashrc`:
 
 ```sh
 # Pyenv environment variables
@@ -35,12 +50,21 @@ pyenv versions
 
 ## 2. [pyenv-virtualenvwrapper](https://github.com/pyenv/pyenv-virtualenvwrapper)
 
+### Installation on macOS
+
 ```sh
 # Install with homebrew (recommended if you installed pyenv with homebrew)
 brew install pyenv-virtualenvwrapper
 ```
 
-Configure by adding the following to your `~/.zshrc` or equivalent:
+### Installation on Ubuntu
+```sh
+# Clone git repo into the pyenv plugins directory. This will make the pyenv virtualenvwrapper
+# and pyenv virtualenvwrapper_lazy commands available.
+git clone https://github.com/pyenv/pyenv-virtualenvwrapper.git $(pyenv root)/plugins/pyenv-virtualenvwrapper
+```
+
+Configure by adding the following to your `~/.zshrc` or `~/.bashrc`:
 
 ```sh
 # pyenv-virtualenvwrapper
@@ -107,6 +131,8 @@ poetry install --no-root --sync
 
 ## 5. [zsh-autoswitch-virtualenv](https://github.com/MichaelAquilina/zsh-autoswitch-virtualenv)
 
+### zsh
+
 Download with `git clone "https://github.com/MichaelAquilina/zsh-autoswitch-virtualenv.git" "$ZSH_CUSTOM/plugins/autoswitch_virtualenv"`
 
 Configure by adding the following to your `~/.zshrc` or equivalent:
@@ -115,6 +141,53 @@ Configure by adding the following to your `~/.zshrc` or equivalent:
 # Find line containing plugins=(git) and replace with below
 plugins=(git autoswitch_virtualenv)
 ```
+
+### bash
+
+There is no nice equivalent to `zsh-autoswitch-virtualenv` for bash. 
+I (LL) created my own hacky little function to reproduce the same behaviour.
+
+Add these lines to your `~/.bashrc` file:
+
+```sh
+cd() {                                                                                              
+    builtin cd "$@"  # Call the original cd command                                                 
+    activate_virtualenv_if_exists  # Activate virtual environment if .venv exists                   
+}                                                                                                   
+                                                                                                    
+activate_virtualenv_if_exists() {                                                                   
+    local venv_file=".venv"                                                                         
+    local pyenv_file=".python-version"                                                              
+                                                                                                    
+    # Check if the .python-version file exists and activate the pyenv shell if yes                  
+    if [ -f "$pyenv_file" ]; then                                                                   
+        pyenv shell $(cat "$pyenv_file")                                                            
+    fi                                                                                              
+                                                                                                    
+                                                                                                    
+    # Check if .venv file exists in the directory                                                   
+    if [ -f "$venv_file" ]; then                                                                    
+        # Check if not already in the same virtual environment                                      
+        if [ -z "$CURRENT_VIRTUAL_ENV" ]; then                                                      
+            workon "$(cat $venv_file)"  # Activate virtual environment                              
+            export CURRENT_VIRTUAL_ENV=$(pwd)                                                       
+        fi                                                                                          
+    else                                                                                            
+        # Deactivate virtual environment if leaving a directory with .venv file                     
+        parentdir="$(dirname "$CURRENT_VIRTUAL_ENV")"                                               
+        if [[ "$PWD" != "$parentdir"/* ]] ; then                                                    
+          deactivate                                                                                
+          unset CURRENT_VIRTUAL_ENV                                                                 
+        fi                                                                                          
+    fi                                                                                              
+}
+```
+
+This will overload you `cd` command with the addition, that it checks for the existence of a `.venv` and a `.python-version` file.
+If found, it will try to activate the corresponding pyenv version and virtualenv.
+When you cd out of the directory, it will deactivate the virtualenv.
+It works for my setup, but it's possible that you may experience some problems with it.
+
 
 Check it's working by cd-ing into & out of the repo. The environment should load & unload respectively.
 
