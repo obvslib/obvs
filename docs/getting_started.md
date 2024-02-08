@@ -14,8 +14,8 @@ Follow instructions on: https://github.com/pyenv/pyenv#homebrew-on-macos
 
 ```sh
 # Install pre-requisites
-sudo apt update; sudo apt install build-essential libssl-dev zlib1g-dev \                       
-libbz2-dev libreadline-dev libsqlite3-dev curl \                                         
+sudo apt update; sudo apt install build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev curl \
 libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
 # Install pyenv
@@ -144,42 +144,42 @@ plugins=(git autoswitch_virtualenv)
 
 ### bash
 
-There is no nice equivalent to `zsh-autoswitch-virtualenv` for bash. 
+There is no nice equivalent to `zsh-autoswitch-virtualenv` for bash.
 I (LL) created my own hacky little function to reproduce the same behaviour.
 
 Add these lines to your `~/.bashrc` file:
 
 ```sh
-cd() {                                                                                              
-    builtin cd "$@"  # Call the original cd command                                                 
-    activate_virtualenv_if_exists  # Activate virtual environment if .venv exists                   
-}                                                                                                   
-                                                                                                    
-activate_virtualenv_if_exists() {                                                                   
-    local venv_file=".venv"                                                                         
-    local pyenv_file=".python-version"                                                              
-                                                                                                    
-    # Check if the .python-version file exists and activate the pyenv shell if yes                  
-    if [ -f "$pyenv_file" ]; then                                                                   
-        pyenv shell $(cat "$pyenv_file")                                                            
-    fi                                                                                              
-                                                                                                    
-                                                                                                    
-    # Check if .venv file exists in the directory                                                   
-    if [ -f "$venv_file" ]; then                                                                    
-        # Check if not already in the same virtual environment                                      
-        if [ -z "$CURRENT_VIRTUAL_ENV" ]; then                                                      
-            workon "$(cat $venv_file)"  # Activate virtual environment                              
-            export CURRENT_VIRTUAL_ENV=$(pwd)                                                       
-        fi                                                                                          
-    else                                                                                            
-        # Deactivate virtual environment if leaving a directory with .venv file                     
-        parentdir="$(dirname "$CURRENT_VIRTUAL_ENV")"                                               
-        if [[ "$PWD" != "$parentdir"/* ]] ; then                                                    
-          deactivate                                                                                
-          unset CURRENT_VIRTUAL_ENV                                                                 
-        fi                                                                                          
-    fi                                                                                              
+cd() {
+    builtin cd "$@"  # Call the original cd command
+    activate_virtualenv_if_exists  # Activate virtual environment if .venv exists
+}
+
+activate_virtualenv_if_exists() {
+    local venv_file=".venv"
+    local pyenv_file=".python-version"
+
+    # Check if the .python-version file exists and activate the pyenv shell if yes
+    if [ -f "$pyenv_file" ]; then
+        pyenv shell $(cat "$pyenv_file")
+    fi
+
+
+    # Check if .venv file exists in the directory
+    if [ -f "$venv_file" ]; then
+        # Check if not already in the same virtual environment
+        if [ -z "$CURRENT_VIRTUAL_ENV" ]; then
+            workon "$(cat $venv_file)"  # Activate virtual environment
+            export CURRENT_VIRTUAL_ENV=$(pwd)
+        fi
+    else
+        # Deactivate virtual environment if leaving a directory with .venv file
+        parentdir="$(dirname "$CURRENT_VIRTUAL_ENV")"
+        if [[ "$PWD" != "$parentdir"/* ]] ; then
+          deactivate
+          unset CURRENT_VIRTUAL_ENV
+        fi
+    fi
 }
 ```
 
