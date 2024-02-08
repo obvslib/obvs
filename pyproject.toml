@@ -11,7 +11,6 @@ classifiers = ["Private :: Do Not Upload"]
 packages = [
   # { include = "obvs" },
   { include = "obvspython" },
-  { include = "patchscopes_transformerlens" },
   # Add more packages here, e.g.
   # { include = "module_name", from = "obvs" },
 ]
