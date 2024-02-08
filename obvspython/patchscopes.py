@@ -35,7 +35,7 @@ from typing import Callable, Sequence, Optional, List, Any
 from nnsight import LanguageModel
 from nnsight.contexts import Invoker
 
-from patchscopes_nnsight.patchscopes_base import PatchscopesBase
+from obvspython.patchscopes_base import PatchscopesBase
 
 
 @dataclass
