@@ -24,6 +24,7 @@ torchvision = "^0.16.2"
 transformers = "^4.37.1"
 nnsight = "^0.1.17"
 tiktoken = "^0.5.2"
+plotly = "^5.18.0"
 
 [tool.poetry.dev-dependencies]
 # Everything below here is alphabetically sorted
