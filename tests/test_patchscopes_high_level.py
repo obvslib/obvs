@@ -16,7 +16,7 @@ class TestPatchscope:
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
-        decoded = patchscope.target_model.tokenizer.decode(output)
+        decoded = patchscope.tokenizer.decode(output)
 
         # Assert the target has been patched to think a rat is a cat
         assert "cat" in decoded
@@ -34,7 +34,7 @@ class TestPatchscope:
         for i in range(patchscope.n_layers):
             patchscope.run()
             output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
-            decoded = patchscope.target_model.tokenizer.decode(output)
+            decoded = patchscope.tokenizer.decode(output)
 
             # Assert the target has been patched to think a rat is a cat
             assert "cat" in decoded
@@ -75,7 +75,7 @@ class TestPatchscope:
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
-        decoded = patchscope.target_model.tokenizer.decode(output)
+        decoded = patchscope.tokenizer.decode(output)
 
         # Assert the target has been patched to think a rat is a cat
         assert "cat" in decoded
@@ -99,7 +99,7 @@ class TestPatchscope:
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
-        decoded = patchscope.target_model.tokenizer.decode(output)
+        decoded = patchscope.tokenizer.decode(output)
 
         # Assert the target has been patched to think a rat is a cat
         assert "cat" in decoded
@@ -115,7 +115,6 @@ class TestPatchscope:
 
         patchscope.run()
 
-        # Assert the target has been patched to think a rat is a cat
         assert "a cat is a cat" in patchscope.full_output()
 
     @staticmethod
@@ -139,13 +138,13 @@ class TestPatchscope:
         assert "a rat is a cat" in patchscope.full_output()
 
     @staticmethod
-    def test_token_identity_prompt(patchscope):
+    def test_token_identity_prompt_early(patchscope):
         """
         This is the same as the last setup, but we use a more natural set of prompts.
         THIS DOESNT WORK :'(
         """
-        patchscope.source.prompt = "it has whiskers and a tail. it domesticated itself. it is a"
-        patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x"
+        patchscope.source.prompt = "it has whiskers and a tail. it domesticated itself. it is a species of"
+        patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
         patchscope.target.max_new_tokens = 4
 
         # Take the final token from the source
@@ -155,10 +154,35 @@ class TestPatchscope:
 
         # At the end, assume the final token has been loaded with the concept of 'cat'
         patchscope.source.layer = -1
-        # Patch it at every layer
+        # Patch it at an early layer
+        patchscope.target.layer = 3
+
+        patchscope.run()
+
+        # Assert the target has been patched to think about a cat
+        assert "cat" in patchscope.full_output()
+
+    @staticmethod
+    def test_token_identity_prompt(patchscope):
+        """
+        This is the same as the last setup, but we use a more natural set of prompts.
+        THIS DOESNT WORK :'(
+        """
+        patchscope.source.prompt = "it has whiskers and a tail. it domesticated itself. it is a species of"
+        patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+        patchscope.target.max_new_tokens = 4
+
+        # Take the final token from the source
+        patchscope.source.position = -1
+        # Patch the index of "x"
+        patchscope.target.position = patchscope.find_in_target(" x")
+
+        # At the end, assume the final token has been loaded with the concept of 'cat'
+        patchscope.source.layer = -1
+        # Patch it at the last layer
         patchscope.target.layer = -1
 
         patchscope.run()
 
-        # Assert the target has been patched to think a rat is a cat
+        # Assert the target has been patched to think about a cat
         assert "cat" in patchscope.full_output()
