@@ -110,7 +110,7 @@ class TestPatchscope:
         Check we can generate more than one token at the target side
         """
         patchscope.source.prompt = "a dog is a dog. a rat is a rat. a cat"
-        patchscope.target.prompt = "a dog is a dog. a rat is a rat. a cat"
+        patchscope.target.prompt = patchscope.source.prompt
         patchscope.target.max_new_tokens = 4
 
         patchscope.run()
