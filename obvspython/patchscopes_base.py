@@ -211,3 +211,35 @@ class PatchscopesBase(ABC):
         assert len(tokens_a) <= len(self.source_tokens)
 
         return tokens_a, tokens_b
+
+    def compute_precision_at_1(self, estimated_probs, true_token_index):
+        """
+        Compute Precision@1 metric. From the outputs of the target (patched) model
+        (estimated_probs) against the output of the source model, aka the 'true' token.
+        Args:
+        - estimated_probs: The estimated probabilities for each token as a torch.Tensor.
+        - true_token_index: The index of the true token in the vocabulary.
+        Returns:
+        - precision_at_1: Precision@1 metric result.
+
+        This is the evaluation method of the token identity from patchscopes: https://arxiv.org/abs/2401.06102
+        Its used for running an evaluation over large datasets.
+        """
+        predicted_token_index = torch.argmax(estimated_probs)
+        precision_at_1 = 1 if predicted_token_index == true_token_index else 0
+        return precision_at_1
+
+    def compute_surprisal(self, estimated_probs, true_token_index):
+        """
+        Compute Surprisal metric. From the outputs of the target (patched) model
+        (estimated_probs) against the output of the source model, aka the 'true' token.
+        Args:
+        - estimated_probs: The estimated probabilities for each token as a torch.Tensor.
+        - true_token_index: The index of the true token in the vocabulary.
+        Returns:
+        - surprisal: Surprisal metric result.
+        """
+        # To avoid log(0) issues, add a small constant to the probabilities
+        estimated_probs = torch.clamp(estimated_probs, min=1e-12)
+        surprisal = -torch.log(estimated_probs[true_token_index])
+        return surprisal.item()
