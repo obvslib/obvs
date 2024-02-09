@@ -8,9 +8,10 @@ class TestPatchscope:
         patchscope.target.prompt = "a dog is a dog. a rat is a"
         patchscope.source.layer = -1
         patchscope.target.layer = -1
+
+        # This configuration will set it to take all tokens
         patchscope.source.position = None
         patchscope.target.position = None
-        patchscope.target.max_new_tokens = 1
         patchscope.get_position()
 
         patchscope.run()
@@ -48,6 +49,8 @@ class TestPatchscope:
         patchscope.target.max_new_tokens = 1
         patchscope.source.position = -1
         patchscope.target.position = -1
+        patchscope.source.layer = -1
+        patchscope.target.layer = -1
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
@@ -58,11 +61,17 @@ class TestPatchscope:
 
     @staticmethod
     def test_unequal_single_patch(patchscope):
+        """
+        Patching only one token, we don't need the two to be the same length
+        At the final layer this should work.
+        """
         patchscope.source.prompt = "a dog is a dog. a rat is a rat. a cat is a"
         patchscope.target.prompt = "a dog is a dog. a rat is a"
         patchscope.target.max_new_tokens = 1
         patchscope.source.position = -1
         patchscope.target.position = -1
+        patchscope.source.layer = -1
+        patchscope.target.layer = -1
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
@@ -133,6 +142,7 @@ class TestPatchscope:
     def test_token_identity_prompt(patchscope):
         """
         This is the same as the last setup, but we use a more natural set of prompts.
+        THIS DOESNT WORK :'(
         """
         patchscope.source.prompt = "it has whiskers and a tail. it domesticated itself. it is a"
         patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x"
