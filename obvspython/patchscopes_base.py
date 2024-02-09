@@ -7,7 +7,7 @@ import torch
 
 class PatchscopesBase(ABC):
     """
-    A base class with universal tools
+    A base class with lots of helper functions
     """
 
     @abstractmethod
