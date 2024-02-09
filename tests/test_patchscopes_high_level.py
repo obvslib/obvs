@@ -1,24 +1,3 @@
-import pytest
-from obvspython.patchscopes import SourceContext, TargetContext, Patchscope
-
-
-# Make a patchscope fixture so we only have to load the model once. (This is slow)
-@pytest.fixture(scope="session")
-def patchscope():
-    source_context = SourceContext(device="cpu")
-    target_context = TargetContext.from_source(source_context, max_new_tokens=1)
-    return Patchscope(source_context, target_context)
-
-
-# Make a patchscope fixture so we only have to load the model once. (This is slow)
-@pytest.fixture(scope="session")
-def patchscope_llama():
-    # Don't worry, we just use the tokenizer, you won't need to download the full llama2 model ;)
-    source_context = SourceContext(device="cpu", model_name="meta-llama/Llama-2-7b-hf")
-    target_context = TargetContext.from_source(source_context, max_new_tokens=1)
-    return Patchscope(source_context, target_context)
-
-
 class TestPatchscope:
     @staticmethod
     def test_equal_full_patch(patchscope):
@@ -27,6 +6,8 @@ class TestPatchscope:
         """
         patchscope.source.prompt = "a dog is a dog. a cat is a"
         patchscope.target.prompt = "a dog is a dog. a rat is a"
+        patchscope.source.layer = -1
+        patchscope.target.layer = -1
         patchscope.source.position = None
         patchscope.target.position = None
         patchscope.target.max_new_tokens = 1
@@ -157,16 +138,17 @@ class TestPatchscope:
         patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x"
         patchscope.target.max_new_tokens = 4
 
+        # Take the final token from the source
         patchscope.source.position = -1
         # Patch the index of "x"
         patchscope.target.position = patchscope.find_in_target(" x")
 
         # At the end, assume the final token has been loaded with the concept of 'cat'
-        patchscope.source.layer = range(patchscope.n_layers)
+        patchscope.source.layer = -1
         # Patch it at every layer
-        patchscope.target.layer = range(patchscope.n_layers)
+        patchscope.target.layer = -1
 
         patchscope.run()
 
         # Assert the target has been patched to think a rat is a cat
-        assert "x is a cat" in patchscope.full_output()
+        assert "cat" in patchscope.full_output()

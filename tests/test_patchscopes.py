@@ -1,6 +1,7 @@
 from obvspython.patchscopes import SourceContext, TargetContext, Patchscope
 
 import torch
+import numpy as np
 
 
 class TestContext:
@@ -20,13 +21,13 @@ class TestContext:
         assert target.mapping_function(1) == 1
         assert target.mapping_function(None) is None
 
-        # Test with a random torch tensor
-        tensor = torch.tensor([1, 2, 3])
-        assert target.mapping_function(tensor) == tensor
+        # Test with a random torch tensor using random numbers
+        tensor = torch.tensor(np.random.rand(3, 3))
+        assert target.mapping_function(tensor).equal(tensor)
 
         target = TargetContext("target", mapping_function=lambda x: x + 1)
         assert target.mapping_function(1) == 2
-        assert target.mapping_function(tensor) == tensor + 1
+        assert target.mapping_function(tensor).equal(tensor + 1)
 
 
 class TestPatchscope:
@@ -43,7 +44,7 @@ class TestPatchscope:
         assert patchscope.source.position == range(len(patchscope.tokenizer.encode("source")))
         assert patchscope.target.position == range(len(patchscope.tokenizer.encode("target")))
 
-        assert patchscope.souce.layer == -1
+        assert patchscope.source.layer == -1
         assert patchscope.target.layer == -1
 
     @staticmethod
@@ -51,3 +52,33 @@ class TestPatchscope:
         source = SourceContext("source")
         target = TargetContext("target")
         patchscope = Patchscope(source, target)
+
+        tensor = torch.tensor(np.random.rand(3, 3))
+        patchscope._source_hidden_state = tensor
+        patchscope.map()
+        assert patchscope._mapped_hidden_state.equal(tensor)
+
+    @staticmethod
+    def test_source_tokens(patchscope):
+        patchscope.source.prompt = "a dog is a dog. a cat is a"
+        assert patchscope.source_tokens == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
+
+    @staticmethod
+    def test_source_forward_pass_creates_hidden_state(patchscope):
+        patchscope.source.prompt = "a dog is a dog. a cat is a"
+
+        # This will set position to all tokens
+        patchscope.source.position = None
+        patchscope.get_position()
+
+        patchscope.source.layer = 0
+        patchscope.source_forward_pass()
+
+        assert patchscope._source_hidden_state.value.shape[0] == 1   # Batch size, always 1
+        assert patchscope._source_hidden_state.value.shape[1] == len(patchscope.source_tokens)  # Number of tokens
+        assert patchscope._source_hidden_state.value.shape[2] == patchscope.source_model.transformer.embed_dim  # Embedding dimension
+
+        patchscope.source.prompt = "a dog is a dog"
+        patchscope.get_position()
+        patchscope.source_forward_pass()
+        assert patchscope._source_hidden_state.value.shape[1] == len(patchscope.source_tokens)  # Number of tokens
