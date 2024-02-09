@@ -54,7 +54,7 @@ class PatchscopesBase(ABC):
         """
         return [self.tokenizer.decode(token) for token in self.target_tokens]
 
-    def get_position(self, force=True):
+    def get_position(self, force=False):
         if self.source.position is None or force:
             # If no position is specified, take them all
             self.source.position = range(len(self.source_tokens))
@@ -101,14 +101,18 @@ class PatchscopesBase(ABC):
         tokens = self.logits().argmax(dim=-1)
         return [self.tokenizer.decode(token) for token in tokens]
 
+    def _output_tokens(self):
+        tensors_list = [self._target_outputs[i].value for i in range(len(self._target_outputs))]
+        tokens = torch.cat(tensors_list, dim=0)
+        return tokens.argmax(dim=-1).tolist()
+
     def full_output_words(self):
         """
         Return the generated output from the target model
         This is a bit hacky. Its not super well supported. I have to concatenate all the inputs and add the input tokens to them.
         """
-        tensors_list = [self._target_outputs[i].value for i in range(len(self._target_outputs))]
-        tokens = torch.cat(tensors_list, dim=0)
-        tokens = tokens.argmax(dim=-1).tolist()
+        tokens = self._output_tokens()
+
         input_tokens = self.tokenizer.encode(self.target.prompt)
         tokens.insert(0, ' ')
         tokens[:len(input_tokens)] = input_tokens
