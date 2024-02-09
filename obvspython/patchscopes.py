@@ -103,6 +103,7 @@ class Patchscope(PatchscopesBase):
     REMOTE: bool = False
 
     _source_hidden_state: torch.Tensor = field(init=False)
+    _mapped_hidden_state: torch.Tensor = field(init=False)
     _target_outputs: List[torch.Tensor] = field(init=False, default_factory=list)
 
     def __post_init__(self):
@@ -164,7 +165,7 @@ class Patchscope(PatchscopesBase):
         """
         Apply the mapping function to the source representation
         """
-        self._source_hidden_state = self.target.mapping_function(self._source_hidden_state)
+        self._mapped_hidden_state = self.target.mapping_function(self._source_hidden_state)
 
     def target_forward_pass(self):
         """
@@ -196,7 +197,7 @@ class Patchscope(PatchscopesBase):
             self.target_model
             .transformer.h[self.target.layer]
             .output[0][:, self.target.position, :]
-        ) = self._source_hidden_state.value
+        ) = self._mapped_hidden_state.value
 
         for generation in range(self.target.max_new_tokens):
             self._target_outputs.append(self.target_model.lm_head.output[0].save())
@@ -210,7 +211,7 @@ class Patchscope(PatchscopesBase):
             self.target_model
             .model.layers[self.target.layer]
             .output[0][:, self.target.position, :]
-        ) = self._source_hidden_state.value
+        ) = self._mapped_hidden_state.value
 
         for generation in range(self.target.max_new_tokens):
             self._target_outputs.append(self.target_model.lm_head.output[0].save())
