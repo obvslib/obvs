@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Sequence, Optional, List, Any
 
 from nnsight import LanguageModel
-from nnsight.contexts import Invoker
+from nnsight.models.Mamba import MambaInterp
 
 from obvspython.patchscopes_base import PatchscopesBase
 
@@ -107,18 +107,25 @@ class Patchscope(PatchscopesBase):
     _target_outputs: List[torch.Tensor] = field(init=False, default_factory=list)
 
     def __post_init__(self):
-        # Load models
-        self.source_model = LanguageModel(self.source.model_name, device_map=self.source.device)
-        if self.source.model_name == self.target.model_name:
-            self.target_model = self.source_model
-        else:
-            self.target_model = LanguageModel(self.target.model_name, device_map=self.target.device)
 
         self.tokenizer = self.source_model.tokenizer
         self.get_position()
 
         self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
         self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
+
+    def _load(self):
+        """
+        All models except Mamba load via LanguageModel
+        """
+        loader = MambaInterp if "mamba" in self.source.model_name else LanguageModel
+        self.source_model = loader(self.source.model_name, device_map=self.source.device)
+
+        if self.source.model_name == self.target.model_name:
+            self.target_model = self.source_model
+        else:
+            loader = MambaInterp if "mamba" in self.target.model_name else LanguageModel
+            self.target_model = loader(self.target.model_name, device_map=self.target.device)
 
     def source_forward_pass(self, source: Optional[SourceContext] = None):
         """

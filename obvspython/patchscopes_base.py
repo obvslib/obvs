@@ -17,6 +17,8 @@ class PatchscopesBase(ABC):
         """
         if "gpt" in model_name:
             return "transformer", "h"
+        if "mamba" in model_name:
+            return "backbone", "layers"
         return "model", "layers"
 
     @abstractmethod
