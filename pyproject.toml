@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11.7"
+python = "^3.10.0"
 # Everything below here is alphabetically sorted
 ipykernel = "^6.28.0"
 torch = "^2.1.2"
