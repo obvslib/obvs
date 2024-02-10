@@ -117,6 +117,9 @@ class Patchscope(PatchscopesBase):
         self.tokenizer = self.source_model.tokenizer
         self.get_position()
 
+        self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
+        self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
+
     def source_forward_pass(self, source: Optional[SourceContext] = None):
         """
         Get the source representation.
@@ -134,32 +137,10 @@ class Patchscope(PatchscopesBase):
         """
         with self.source_model.forward(remote=self.REMOTE) as runner:
             with runner.invoke(source.prompt) as _:
-                if "gpt2" in self.source.model_name:
-                    return self._gpt_source_invoker(source)
-                elif "lama" in self.source.model_name:
-                    return self._llama2_source_invoker(source)
-                else:
-                    raise ValueError(f"Model {self.source.model_name} not supported")
-
-    def _gpt_source_invoker(self, source: SourceContext):
-        """
-        Get the hidden state from any GPT2 model
-        """
-        return (
-            self.source_model
-            .transformer.h[source.layer]
-            .output[0][:, source.position, :]
-        ).save()
-
-    def _llama2_source_invoker(self, source: SourceContext):
-        """
-        Get the hidden state from any Llama2 model
-        """
-        return (
-            self.source_model
-            .model.layers[source.layer]
-            .output[0][:, source.position, :]
-        ).save()
+                return (
+                    getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
+                    [source.layer].output[0][:, source.position, :]
+                ).save()
 
     def map(self):
         """
@@ -182,40 +163,14 @@ class Patchscope(PatchscopesBase):
             max_new_tokens=self.target.max_new_tokens,
         ) as runner:
             with runner.invoke(self.target.prompt) as invoker:
-                if "gpt2" in self.source.model_name:
-                    self._gpt_target_invoker(invoker)
-                elif "lama" in self.source.model_name:
-                    self._llama2_target_invoker(invoker)
-                else:
-                    raise ValueError(f"Model {self.target.model_name} not supported")
+                (
+                    getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
+                    [self.target.layer].output[0][:, self.target.position, :]
+                ) = self._mapped_hidden_state.value
 
-    def _gpt_target_invoker(self, invoker: Invoker.Invoker):
-        """
-        Patch the target representation for GPT2 models and save the output
-        """
-        (
-            self.target_model
-            .transformer.h[self.target.layer]
-            .output[0][:, self.target.position, :]
-        ) = self._mapped_hidden_state.value
-
-        for generation in range(self.target.max_new_tokens):
-            self._target_outputs.append(self.target_model.lm_head.output[0].save())
-            invoker.next()
-
-    def _llama2_target_invoker(self, invoker: Invoker.Invoker):
-        """
-        Patch the target representation for Llama2 models and save the output
-        """
-        (
-            self.target_model
-            .model.layers[self.target.layer]
-            .output[0][:, self.target.position, :]
-        ) = self._mapped_hidden_state.value
-
-        for generation in range(self.target.max_new_tokens):
-            self._target_outputs.append(self.target_model.lm_head.output[0].save())
-            invoker.next()
+                for generation in range(self.target.max_new_tokens):
+                    self._target_outputs.append(self.target_model.lm_head.output[0].save())
+                    invoker.next()
 
     def run(self):
         """

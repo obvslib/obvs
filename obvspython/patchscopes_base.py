@@ -10,6 +10,15 @@ class PatchscopesBase(ABC):
     A base class with lots of helper functions
     """
 
+    def get_model_specifics(self, model_name):
+        """
+        Get the model specific attributes.
+        The following works for gpt2, llama2 and mistral models.
+        """
+        if "gpt" in model_name:
+            return "transformer", "h"
+        return "model", "layers"
+
     @abstractmethod
     def source_forward_pass(self):
         pass
@@ -146,18 +155,7 @@ class PatchscopesBase(ABC):
 
     @property
     def n_layers(self):
-        if "gpt" in self.target.model_name:
-            return self._n_layers_gpt
-        elif "lama" in self.target.model_name:
-            return self._n_layers_llama2
-
-    @property
-    def _n_layers_gpt(self):
-        return len(self.target_model.transformer.h)
-
-    @property
-    def _n_layers_llama2(self):
-        return len(self.target_model.model.layers)
+        return len(getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET))
 
     def get_activation_pair(self, string_a: str, string_b: Optional[str] = None):
         """
