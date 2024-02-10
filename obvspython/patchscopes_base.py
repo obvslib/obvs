@@ -115,6 +115,13 @@ class PatchscopesBase(ABC):
         tokens = torch.cat(tensors_list, dim=0)
         return tokens.argmax(dim=-1).tolist()
 
+    def llama_output(self):
+        """
+        For llama, if you don't decode them all together, they don't add the spaces.
+        """
+        tokens = self._output_tokens()
+        return self.tokenizer.decode(tokens)
+
     def full_output_words(self):
         """
         Return the generated output from the target model
