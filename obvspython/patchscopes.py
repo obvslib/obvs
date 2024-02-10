@@ -107,6 +107,7 @@ class Patchscope(PatchscopesBase):
     _target_outputs: List[torch.Tensor] = field(init=False, default_factory=list)
 
     def __post_init__(self):
+        self._load()
 
         self.tokenizer = self.source_model.tokenizer
         self.get_position()
