@@ -31,4 +31,3 @@ def generate(input_ids):
 
 
 optimized_generate = generate(input_ids)
-

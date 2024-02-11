@@ -5,9 +5,9 @@ model = LanguageModel(llama)
 
 prompt = "The quick brown fox jumps over the lazy"
 
-with model.invoke(prompt) as invoker:
-    pass
+with model.generate(max_new_tokens=10) as generator:
+    with generator.invoke(prompt) as _:
+        pass
 
 
-output = model.tokenizer.decode(invoker.output[0].argmax(-1).squeeze())
-print(output)
+print(generator.output())
