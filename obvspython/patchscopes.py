@@ -119,7 +119,7 @@ class Patchscope(PatchscopesBase):
         """
         All models except Mamba load via LanguageModel
         """
-        loader = MambaInterp if "mamba" in self.source.model_name else LanguageModel
+        loader = self._load_mamba if "mamba" in self.source.model_name else LanguageModel
         self.source_model = loader(self.source.model_name, device_map=self.source.device)
 
         if self.source.model_name == self.target.model_name:
@@ -127,6 +127,9 @@ class Patchscope(PatchscopesBase):
         else:
             loader = MambaInterp if "mamba" in self.target.model_name else LanguageModel
             self.target_model = loader(self.target.model_name, device_map=self.target.device)
+
+    def _load_mamba(self, model_name: str, device_map: str):
+        return MambaInterp(model_name)
 
     def source_forward_pass(self, source: Optional[SourceContext] = None):
         """
