@@ -129,7 +129,7 @@ class Patchscope(PatchscopesBase):
             self.target_model = loader(self.target.model_name, device_map=self.target.device)
 
     def _load_mamba(self, model_name: str, device_map: str):
-        return MambaInterp(model_name)
+        return MambaInterp(model_name, device=device_map)
 
     def source_forward_pass(self, source: Optional[SourceContext] = None):
         """
