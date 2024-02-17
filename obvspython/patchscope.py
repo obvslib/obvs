@@ -3,6 +3,7 @@
 # - (S, i, M, ℓ) corresponds to the source from which the original hidden representation is drawn.
 #   - S is the source input sequence.
 #   - i is the position within that sequence.
+#           NB: We extend the method to allow a range of positions
 #   - M is the original model that processes the sequence.
 #   - ℓ is the layer in model M from which the hidden representation is taken.
 #
@@ -10,6 +11,7 @@
 # - (T, i*, f, M*, ℓ*) defines the target context for the intervention (patching operation).
 #   - T is the target prompt, which can be different from the source prompt S or the same.
 #   - i* is the position in the target prompt that will receive the patched representation.
+#           NB: We extend the method to allow a range of positions
 #   - f is the mapping function that operates on the hidden representation to possibly transform
 #       it before it is patched into the target context. It can be a simple identity function or a more complex transformation.
 #   - M* is the model (which could be the same as M or different) in which the patching operation is performed.
@@ -117,7 +119,7 @@ class Patchscope(PatchscopeBase):
         self.tokenizer = self.source_model.tokenizer
         self.init_positions()
 
-    def source_forward_pass(self):
+    def source_forward_pass(self) -> None:
         """
         Get the source representation.
         """
@@ -160,13 +162,13 @@ class Patchscope(PatchscopeBase):
             .output[0][:, source.position, :]
         ).save()
 
-    def map(self):
+    def map(self) -> None:
         """
         Apply the mapping function to the source representation
         """
         self._mapped_hidden_state = self.target.mapping_function(self._source_hidden_state)
 
-    def target_forward_pass(self):
+    def target_forward_pass(self) -> None:
         """
         Patch the target representation.
         In order to support multi-token generation,
@@ -216,7 +218,7 @@ class Patchscope(PatchscopeBase):
             self._target_outputs.append(self.target_model.lm_head.output[0].save())
             invoker.next()
 
-    def run(self):
+    def run(self) -> None:
         """
         Run the patchscope
         """

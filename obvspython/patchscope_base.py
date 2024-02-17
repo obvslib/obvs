@@ -1,5 +1,3 @@
-from typing import Optional
-from copy import deepcopy
 from abc import ABC, abstractmethod
 
 import torch
@@ -11,19 +9,19 @@ class PatchscopeBase(ABC):
     """
 
     @abstractmethod
-    def source_forward_pass(self):
+    def source_forward_pass(self) -> None:
         pass
 
     @abstractmethod
-    def map(self):
+    def map(self) -> None:
         pass
 
     @abstractmethod
-    def target_forward_pass(self):
+    def target_forward_pass(self) -> None:
         pass
 
     @abstractmethod
-    def run(self):
+    def run(self) -> None:
         pass
 
     @property
@@ -158,59 +156,6 @@ class PatchscopeBase(ABC):
     @property
     def _n_layers_llama2(self):
         return len(self.target_model.model.layers)
-
-    def get_activation_pair(self, string_a: str, string_b: Optional[str] = None):
-        """
-        Get the activations for two strings for activation steering.
-        :param string_a: The first string to compare
-        :param string_b: The second string to compare
-        :param bomb: If True, the string will be repeated to fill the source prompt
-        :return: The activations for the two strings
-        """
-        tokens_a, tokens_b = self.justify(string_a, string_b)
-
-        position = range(len(tokens_a))
-
-        source = deepcopy(self.source)
-        source.prompt = self.tokenizer.decode(tokens_a)
-        source.position = position
-
-        print(f"Getting representation with settings: {source}")
-        activations_a = self.get_source_hidden_state(source)
-
-        source.prompt = self.tokenizer.decode(tokens_b)
-        print(f"Getting representation with settings: {source}")
-        activations_b = self.get_source_hidden_state(source)
-
-        return activations_a, activations_b
-
-    def justify(self, string_a: str, string_b: Optional[str] = None):
-        if not string_a.startswith(" "):
-            string_a = " " + string_a
-        tokens_a = self.tokenizer.encode(string_a, add_special_tokens=False)
-
-        # If string_b is not provided, use spaces
-        if string_b is None:
-            string_b = " "
-        elif not string_b.startswith(" "):
-            string_b = " " + string_b
-        if "lama" in self.source.model_name:
-            string_b = " " + string_b
-
-        tokens_b = self.tokenizer.encode(string_b, add_special_tokens=False)
-
-        # Pad the shortest string with spaces
-        if len(tokens_a) > len(tokens_b):
-            tokens_b = tokens_b + self.tokenizer.encode(" ", add_special_tokens=False) * (len(tokens_a) - len(tokens_b))
-        elif len(tokens_a) < len(tokens_b):
-            tokens_a = tokens_a + self.tokenizer.encode(" ", add_special_tokens=False) * (len(tokens_b) - len(tokens_a))
-
-        print(f"Activation pair created: tokens_a: {len(tokens_a)}, tokens_b: {len(tokens_b)}, source_tokens: {len(self.source_tokens)}")
-
-        assert len(tokens_a) == len(tokens_b)
-        assert len(tokens_a) <= len(self.source_tokens)
-
-        return tokens_a, tokens_b
 
     def compute_precision_at_1(self, estimated_probs, true_token_index):
         """
