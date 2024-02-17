@@ -1,7 +1,9 @@
-from obvspython.patchscope import SourceContext, TargetContext, Patchscope
+from __future__ import annotations
 
-import torch
 import numpy as np
+import torch
+
+from obvspython.patchscope import Patchscope, SourceContext, TargetContext
 
 
 class TestContext:
@@ -74,11 +76,18 @@ class TestPatchscope:
         patchscope.source.layer = 0
         patchscope.source_forward_pass()
 
-        assert patchscope._source_hidden_state.value.shape[0] == 1   # Batch size, always 1
-        assert patchscope._source_hidden_state.value.shape[1] == len(patchscope.source_tokens)  # Number of tokens
-        assert patchscope._source_hidden_state.value.shape[2] == patchscope.source_model.transformer.embed_dim  # Embedding dimension
+        assert patchscope._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
+        assert patchscope._source_hidden_state.value.shape[1] == len(
+            patchscope.source_tokens,
+        )  # Number of tokens
+        assert (
+            patchscope._source_hidden_state.value.shape[2]
+            == patchscope.source_model.transformer.embed_dim
+        )  # Embedding dimension
 
         patchscope.source.prompt = "a dog is a dog"
         patchscope.init_positions(force=True)
         patchscope.source_forward_pass()
-        assert patchscope._source_hidden_state.value.shape[1] == len(patchscope.source_tokens)  # Number of tokens
+        assert patchscope._source_hidden_state.value.shape[1] == len(
+            patchscope.source_tokens,
+        )  # Number of tokens

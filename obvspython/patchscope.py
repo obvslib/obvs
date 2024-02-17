@@ -30,10 +30,13 @@
 # - ℓ* = L*
 # Meaning, we take the hidden representation from each layer of the source model and patch it into the final layer of the target model.
 
-import torch
-from dataclasses import dataclass, field
-from typing import Callable, Sequence, Optional, List, Any
+from __future__ import annotations
 
+from dataclasses import dataclass, field
+from typing import Any, List, Optional
+from collections.abc import Callable, Sequence
+
+import torch
 from nnsight import LanguageModel
 from nnsight.contexts import Invoker
 
@@ -45,8 +48,9 @@ class SourceContext:
     """
     Source context for the patchscope
     """
+
     prompt: Sequence[str] = "<|endoftext|>"
-    position: Optional[Sequence[int]] = None
+    position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
     device: str = "cuda:0"
@@ -65,14 +69,15 @@ class TargetContext(SourceContext):
     Parameters identical to the source context, with the addition of
     a mapping function and max_new_tokens to control generation length
     """
+
     mapping_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x
     max_new_tokens: int = 10
 
     @staticmethod
     def from_source(
-            source: SourceContext,
-            mapping_function: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
-            max_new_tokens: int = 10
+        source: SourceContext,
+        mapping_function: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        max_new_tokens: int = 10,
     ):
         return TargetContext(
             prompt=source.prompt,
@@ -81,7 +86,7 @@ class TargetContext(SourceContext):
             layer=source.layer,
             mapping_function=mapping_function or (lambda x: x),
             max_new_tokens=max_new_tokens,
-            device=source.device
+            device=source.device,
         )
 
     def __repr__(self):
@@ -106,12 +111,15 @@ class Patchscope(PatchscopeBase):
 
     _source_hidden_state: torch.Tensor = field(init=False)
     _mapped_hidden_state: torch.Tensor = field(init=False)
-    _target_outputs: List[torch.Tensor] = field(init=False, default_factory=list)
+    _target_outputs: list[torch.Tensor] = field(init=False, default_factory=list)
 
     def __post_init__(self):
         # Load models
         self.source_model = LanguageModel(self.source.model_name, device_map=self.source.device)
-        if self.source.model_name == self.target.model_name and self.source.device == self.target.device:
+        if (
+            self.source.model_name == self.target.model_name
+            and self.source.device == self.target.device
+        ):
             self.target_model = self.source_model
         else:
             self.target_model = LanguageModel(self.target.model_name, device_map=self.target.device)
@@ -147,9 +155,7 @@ class Patchscope(PatchscopeBase):
         Get the hidden state from any GPT2 model
         """
         return (
-            self.source_model
-            .transformer.h[source.layer]
-            .output[0][:, source.position, :]
+            self.source_model.transformer.h[source.layer].output[0][:, source.position, :]
         ).save()
 
     def _llama2_source_invoker(self, source: SourceContext):
@@ -157,9 +163,7 @@ class Patchscope(PatchscopeBase):
         Get the hidden state from any Llama2 model
         """
         return (
-            self.source_model
-            .model.layers[source.layer]
-            .output[0][:, source.position, :]
+            self.source_model.model.layers[source.layer].output[0][:, source.position, :]
         ).save()
 
     def map(self) -> None:
@@ -195,9 +199,7 @@ class Patchscope(PatchscopeBase):
         Patch the target representation for GPT2 models and save the output
         """
         (
-            self.target_model
-            .transformer.h[self.target.layer]
-            .output[0][:, self.target.position, :]
+            self.target_model.transformer.h[self.target.layer].output[0][:, self.target.position, :]
         ) = self._mapped_hidden_state.value
 
         for generation in range(self.target.max_new_tokens):
@@ -209,9 +211,7 @@ class Patchscope(PatchscopeBase):
         Patch the target representation for Llama2 models and save the output
         """
         (
-            self.target_model
-            .model.layers[self.target.layer]
-            .output[0][:, self.target.position, :]
+            self.target_model.model.layers[self.target.layer].output[0][:, self.target.position, :]
         ) = self._mapped_hidden_state.value
 
         for generation in range(self.target.max_new_tokens):

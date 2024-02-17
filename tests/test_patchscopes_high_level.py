@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class TestPatchscope:
     @staticmethod
     def test_equal_full_patch(patchscope):
@@ -143,8 +146,12 @@ class TestPatchscope:
         This is the same as the last setup, but we use a more natural set of prompts.
         THIS DOESNT WORK :'(
         """
-        patchscope.source.prompt = "it has whiskers and a tail. it domesticated itself. it is a species of"
-        patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+        patchscope.source.prompt = (
+            "it has whiskers and a tail. it domesticated itself. it is a species of"
+        )
+        patchscope.target.prompt = (
+            "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+        )
         patchscope.target.max_new_tokens = 4
 
         # Take the final token from the source
@@ -168,8 +175,12 @@ class TestPatchscope:
         This is the same as the last setup, but we use a more natural set of prompts.
         THIS DOESNT WORK :'(
         """
-        patchscope.source.prompt = "it has whiskers and a tail. it domesticated itself. it is a species of"
-        patchscope.target.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+        patchscope.source.prompt = (
+            "it has whiskers and a tail. it domesticated itself. it is a species of"
+        )
+        patchscope.target.prompt = (
+            "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+        )
         patchscope.target.max_new_tokens = 4
 
         # Take the final token from the source

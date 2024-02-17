@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import torch
@@ -112,8 +114,8 @@ class PatchscopeBase(ABC):
         tokens = self._output_tokens()
 
         input_tokens = self.tokenizer.encode(self.target.prompt)
-        tokens.insert(0, ' ')
-        tokens[:len(input_tokens)] = input_tokens
+        tokens.insert(0, " ")
+        tokens[: len(input_tokens)] = input_tokens
         return [self.tokenizer.decode(token) for token in tokens]
 
     def full_output(self):

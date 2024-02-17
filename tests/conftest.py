@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import pytest
-from obvspython.patchscope import SourceContext, TargetContext, Patchscope
+
+from obvspython.patchscope import Patchscope, SourceContext, TargetContext
 
 
 # Make a patchscope fixture so we only have to load the model once. (This is slow)
