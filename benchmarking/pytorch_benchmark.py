@@ -1,24 +1,38 @@
+import timeit
+import custom_timeit
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import Tuple
 
-# Load model and tokenizer
-llama = "nickypro/tinyllama-110M"
-model = AutoModelForCausalLM.from_pretrained(llama)
-tokenizer = AutoTokenizer.from_pretrained(llama)
 
-# Encode the prompt text into tokens
-prompt = "The quick brown fox jumps over the lazy"
-input_ids = tokenizer.encode(prompt, return_tensors="pt")
-prompt_length = input_ids.shape[-1]
+def setup(model_id: str) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+    """ Setup model and tokenizer and return them """
 
-# Perform a forward pass to get model's output
-outputs = model(input_ids)
+    model = AutoModelForCausalLM.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    return model, tokenizer
 
-# Extract logits
-logits = outputs.logits
 
-# Now, to generate text from the model, you can use:
-generated_output = model.generate(input_ids, max_length=prompt_length + 10)
-generated_text = tokenizer.decode(generated_output[0], skip_special_tokens=True)
+def generate(prompt: str, model: AutoModelForCausalLM, tokenizer: AutoTokenizer) -> str:
+    """ Generate new text from the given prompt and model.
+        Return the generated text as a string """
 
-# Print generated text
-print(generated_text)
+    input_tokens = tokenizer.encode(prompt, return_tensors="pt")
+    prompt_length = input_tokens.shape[-1]
+
+    # generate text
+    generated_output = model.generate(input_tokens, max_length=prompt_length + 10)
+    generated_text = tokenizer.decode(generated_output[0], skip_special_tokens=True)
+
+    return generated_text
+
+
+def run_benchmark(prompt: str, model_id: str = "nickypro/tinyllama-110M") -> Tuple[str, float]:
+    """ Setup model and run text generation on the prompt, estimating the average run time.
+        Return the generated text and the average runtime """
+
+    model, tokenizer = setup(model_id)
+
+    # create a Timer object for estimating the runtime
+    timer = timeit.Timer(lambda: generate(prompt, model, tokenizer))
+    avg_runtime, generated_text = timer.timeit(number=1)
+    return avg_runtime, generated_text
