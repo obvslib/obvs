@@ -35,7 +35,7 @@ from typing import Callable, Sequence, Optional, List, Any
 from nnsight import LanguageModel
 from nnsight.contexts import Invoker
 
-from obvspython.patchscopes_base import PatchscopesBase
+from obvspython.patchscope_base import PatchscopeBase
 
 
 @dataclass
@@ -92,7 +92,7 @@ class TargetContext(SourceContext):
 
 
 @dataclass
-class Patchscope(PatchscopesBase):
+class Patchscope(PatchscopeBase):
     source: SourceContext
     target: TargetContext
     source_model: LanguageModel = field(init=False)

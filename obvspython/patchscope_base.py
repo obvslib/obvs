@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 import torch
 
 
-class PatchscopesBase(ABC):
+class PatchscopeBase(ABC):
     """
     A base class with lots of helper functions
     """
