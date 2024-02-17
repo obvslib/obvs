@@ -1,6 +1,6 @@
 import transformer_lens
 
-llama = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
+llama = "nickypro/tinyllama-110M"
 model = transformer_lens.HookedTransformer.from_pretrained(llama, device="cpu")
 
 prompt = "The quick brown fox jumps over the lazy"

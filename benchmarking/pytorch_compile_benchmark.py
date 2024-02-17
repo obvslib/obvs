@@ -6,7 +6,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # Load model and tokenizer
-llama = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
+llama = "nickypro/tinyllama-110M"
 model = AutoModelForCausalLM.from_pretrained(llama)
 tokenizer = AutoTokenizer.from_pretrained(llama)
 

@@ -1,7 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Load model and tokenizer
-llama = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
+llama = "nickypro/tinyllama-110M"
 model = AutoModelForCausalLM.from_pretrained(llama)
 tokenizer = AutoTokenizer.from_pretrained(llama)
 

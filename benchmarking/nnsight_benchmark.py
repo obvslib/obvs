@@ -1,6 +1,6 @@
 from nnsight import LanguageModel
 
-llama = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
+llama = "nickypro/tinyllama-110M"
 model = LanguageModel(llama)
 
 prompt = "The quick brown fox jumps over the lazy"
@@ -10,4 +10,5 @@ with model.generate(max_new_tokens=10) as generator:
         pass
 
 
-print(generator.output())
+output = model.tokenizer.decode(generator.output[0])
+print(output)
