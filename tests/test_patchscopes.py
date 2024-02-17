@@ -1,4 +1,4 @@
-from obvspython.patchscopes import SourceContext, TargetContext, Patchscope
+from obvspython.patchscope import SourceContext, TargetContext, Patchscope
 
 import torch
 import numpy as np

@@ -1,5 +1,5 @@
 import pytest
-from obvspython.patchscopes import SourceContext, TargetContext, Patchscope
+from obvspython.patchscope import SourceContext, TargetContext, Patchscope
 
 
 # Make a patchscope fixture so we only have to load the model once. (This is slow)
