@@ -22,7 +22,7 @@ ipykernel = "^6.28.0"
 torch = "^2.1.2"
 torchvision = "^0.16.2"
 transformers = "^4.37.1"
-nnsight = { git = "http://github.com/JadenFiotto-Kaufman/nnsight.git", branch = "mambainterp"}
+nnsight = { git = "http://github.com/JadenFiotto-Kaufman/nnsight.git", branch = "dev"}
 tiktoken = "^0.5.2"
 plotly = "^5.18.0"
 
