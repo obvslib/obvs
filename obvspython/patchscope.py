@@ -32,9 +32,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, List, Optional
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+from typing import Any
 
 import torch
 from nnsight import LanguageModel
