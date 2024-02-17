@@ -1,13 +1,18 @@
 import timeit
 import custom_timeit
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import Tuple
 
 
-def setup(model_id: str) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
-    """ Setup model and tokenizer and return them """
+def setup(model_id: str, compile=False) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+    """ Setup model and tokenizer and return them.
+        If compile==True -> compile the model with torch.compile"""
 
     model = AutoModelForCausalLM.from_pretrained(model_id)
+    if compile:
+        model = torch.compile(model)
+
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     return model, tokenizer
 
