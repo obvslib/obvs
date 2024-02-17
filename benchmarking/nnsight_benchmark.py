@@ -21,7 +21,7 @@ def generate(prompt: str, model: LanguageModel) -> str:
     return model.tokenizer.decode(generator.output[0])
 
 
-def run_benchmark(prompt: str, model_id: str = "nickypro/tinyllama-110M") -> Tuple[str, float]:
+def run_benchmark(prompt: str, model_id: str) -> Tuple[str, float]:
     """ Setup model and run text generation on the prompt, estimating the average run time.
         Return the generated text and the average runtime """
 

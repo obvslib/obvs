@@ -31,8 +31,7 @@ def generate(prompt: str, model: AutoModelForCausalLM, tokenizer: AutoTokenizer)
     return generated_text
 
 
-def run_benchmark(prompt: str, model_id: str = "nickypro/tinyllama-110M",
-                  compile_model: bool = False) -> Tuple[str, float]:
+def run_benchmark(prompt: str, model_id: str, compile_model: bool = False) -> Tuple[str, float]:
     """ Setup model and run text generation on the prompt, estimating the average run time.
         Return the generated text and the average runtime """
 
