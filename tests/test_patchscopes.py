@@ -69,7 +69,7 @@ class TestPatchscope:
 
         # This will set position to all tokens
         patchscope.source.position = None
-        patchscope.get_position()
+        patchscope.init_positions()
 
         patchscope.source.layer = 0
         patchscope.source_forward_pass()
@@ -79,6 +79,6 @@ class TestPatchscope:
         assert patchscope._source_hidden_state.value.shape[2] == patchscope.source_model.transformer.embed_dim  # Embedding dimension
 
         patchscope.source.prompt = "a dog is a dog"
-        patchscope.get_position(force=True)
+        patchscope.init_positions(force=True)
         patchscope.source_forward_pass()
         assert patchscope._source_hidden_state.value.shape[1] == len(patchscope.source_tokens)  # Number of tokens

@@ -109,19 +109,18 @@ class Patchscope(PatchscopeBase):
     def __post_init__(self):
         # Load models
         self.source_model = LanguageModel(self.source.model_name, device_map=self.source.device)
-        if self.source.model_name == self.target.model_name:
+        if self.source.model_name == self.target.model_name and self.source.device == self.target.device:
             self.target_model = self.source_model
         else:
             self.target_model = LanguageModel(self.target.model_name, device_map=self.target.device)
 
         self.tokenizer = self.source_model.tokenizer
-        self.get_position()
+        self.init_positions()
 
-    def source_forward_pass(self, source: Optional[SourceContext] = None):
+    def source_forward_pass(self):
         """
         Get the source representation.
         """
-        source = source or self.source
         self._source_hidden_state = self._source_forward_pass(self.source)
 
     def _source_forward_pass(self, source: SourceContext):

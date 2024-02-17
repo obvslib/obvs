@@ -12,7 +12,7 @@ class TestPatchscope:
         # This configuration will set it to take all tokens
         patchscope.source.position = None
         patchscope.target.position = None
-        patchscope.get_position()
+        patchscope.init_positions()
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
@@ -29,7 +29,7 @@ class TestPatchscope:
         patchscope.source.prompt = "a dog is a dog. a cat is a"
         patchscope.target.prompt = "a dog is a dog. a rat is a"
         patchscope.target.max_new_tokens = 1
-        patchscope.get_position()
+        patchscope.init_positions()
 
         for i in range(patchscope.n_layers):
             patchscope.run()
@@ -126,7 +126,7 @@ class TestPatchscope:
         patchscope.target.prompt = "a dog is a dog. a bat is a bat. a rat"
         patchscope.source.position = None
         patchscope.target.position = None
-        patchscope.get_position()
+        patchscope.init_positions()
         patchscope.target.max_new_tokens = 4
 
         patchscope.source.layer = 3

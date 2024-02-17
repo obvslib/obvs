@@ -54,7 +54,7 @@ class PatchscopeBase(ABC):
         """
         return [self.tokenizer.decode(token) for token in self.target_tokens]
 
-    def get_position(self, force=False):
+    def init_positions(self, force=False):
         if self.source.position is None or force:
             # If no position is specified, take them all
             self.source.position = range(len(self.source_tokens))
