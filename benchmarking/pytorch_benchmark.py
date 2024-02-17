@@ -40,5 +40,5 @@ def run_benchmark(prompt: str, model_id: str = "nickypro/tinyllama-110M",
 
     # create a Timer object for estimating the runtime
     timer = timeit.Timer(lambda: generate(prompt, model, tokenizer))
-    avg_runtime, generated_text = timer.timeit(number=1)
-    return avg_runtime, generated_text
+    total_runtime, generated_text = timer.timeit(number=5)
+    return total_runtime / 5, generated_text
