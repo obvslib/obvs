@@ -13,6 +13,8 @@ tokenizer = AutoTokenizer.from_pretrained(llama)
 # Encode the prompt text into tokens
 prompt = "The quick brown fox jumps over the lazy"
 input_ids = tokenizer.encode(prompt, return_tensors="pt")
+prompt_length = input_ids.shape[-1]
+
 
 model = model.to(device)
 input_ids = input_ids.to(device)
@@ -26,7 +28,7 @@ logits = outputs.logits
 
 @torch.compile
 def generate(input_ids):
-    outputs = model.generate(input_ids, max_length=10)
+    outputs = model.generate(input_ids, max_length=prompt_length + 10)
     return outputs
 
 
