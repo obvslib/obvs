@@ -33,3 +33,7 @@ def generate(input_ids):
 
 
 optimized_generate = generate(input_ids)
+generated_text = tokenizer.decode(optimized_generate[0], skip_special_tokens=True)
+
+# Print generated text
+print(generated_text)
