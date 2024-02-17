@@ -17,6 +17,7 @@ prompt_length = input_ids.shape[-1]
 
 
 model = model.to(device)
+model = torch.compile(model)
 input_ids = input_ids.to(device)
 
 # Perform a forward pass to get model's output
@@ -26,7 +27,6 @@ outputs = model(input_ids)
 logits = outputs.logits
 
 
-@torch.compile
 def generate(input_ids):
     outputs = model.generate(input_ids, max_length=prompt_length + 10)
     return outputs
