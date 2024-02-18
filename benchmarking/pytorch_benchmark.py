@@ -1,5 +1,5 @@
 import timeit
-import custom_timeit
+from custom_timeit import custom_timeit
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import Tuple
@@ -36,8 +36,5 @@ def run_benchmark(prompt: str, model_id: str, compile_model: bool = False) -> Tu
         Return the generated text and the average runtime """
 
     model, tokenizer = setup(model_id, compile_model)
+    return custom_timeit(generate, 5, 10,  prompt, model, tokenizer)
 
-    # create a Timer object for estimating the runtime
-    timer = timeit.Timer(lambda: generate(prompt, model, tokenizer))
-    total_runtime, generated_text = timer.timeit(number=5)
-    return total_runtime / 5, generated_text

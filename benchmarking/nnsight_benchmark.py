@@ -1,5 +1,4 @@
-import timeit
-import custom_timeit
+from custom_timeit import custom_timeit
 from nnsight import LanguageModel
 from typing import Tuple
 
@@ -26,10 +25,6 @@ def run_benchmark(prompt: str, model_id: str) -> Tuple[str, float]:
         Return the generated text and the average runtime """
 
     model = setup(model_id)
-
-    # create a Timer object for estimating the runtime
-    timer = timeit.Timer(lambda: generate(prompt, model))
-    total_runtime, generated_text = timer.timeit(number=5)
-    return total_runtime / 5, generated_text
+    return custom_timeit(generate, 5, 10, prompt, model)
 
 
