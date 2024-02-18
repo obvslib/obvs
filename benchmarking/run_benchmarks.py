@@ -49,12 +49,38 @@ def run_benchmarks(prompts: List[str], model_id: str, write_to_csv: bool = True,
             with open(csv_file_name, 'a') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 for result in prompt_results:
-                    csv_writer.writerow([result[0], model_id, prompt, result[1], result[2]])
+                    csv_writer.writerow(
+                        [result[0], model_id, prompt, result[1], result[2], result[3]]
+                    )
+
+
+def read_results_file(results_file: str) -> dict:
+    """ Read the results file and return its contents as a dictionary """
+
+    results = {}
+
+    if not Path(results_file).exists():
+        return
+
+    # read results file
+    with open(results_file, 'r') as csv_file:
+
+        csv_reader = csv.reader(csv_file)
+        # skip header
+        next(csv_reader)
+        for row in csv_reader:
+            prompt = row[2]
+            results[prompt] = (row[0], row[1], row[3], row[4])
+
+    return results
 
 
 if __name__ == '__main__':
-    benchmark_prompts = ['The quick brown fox jumps over the lazy',
-                         'The capital of France is']
+    benchmark_prompts = ['The capital of France is',
+                         'The quick brown fox jumps over the lazy',
+                         'Midnight had just passed when there came a knock on the door, and',
+                         'In a world where machines think and learn like humans,'
+                         ' there exists a concept known as artificial intelligence',]
 
     run_benchmarks(benchmark_prompts, 'nickypro/tinyllama-110M', write_to_csv=True,
                    csv_file_name='python_benchmarks.csv')
