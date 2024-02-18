@@ -178,7 +178,7 @@ class Patchscope(PatchscopeBase):
         if "mamba" not in self.target.model_name:
             kwargs = {"max_new_tokens": self.target.max_new_tokens}
         else:
-            kwargs = {"max_tokens": self.target.max_new_tokens}
+            kwargs = {"max_length": self.target.max_new_tokens}
         with self.target_model.generate(
             remote=self.REMOTE,
             **kwargs
