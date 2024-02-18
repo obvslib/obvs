@@ -169,9 +169,14 @@ class Patchscope(PatchscopesBase):
 
         For each architecture, you need to know the name of the layers.
         """
+        # For all models except mamba, we need max_new_tokens as the kwarg:
+        if "mamba" not in self.target.model_name:
+            kwargs = {"max_new_tokens": self.target.max_new_tokens}
+        else:
+            kwargs = {"max_tokens": self.target.max_new_tokens}
         with self.target_model.generate(
             remote=self.REMOTE,
-            max_new_tokens=self.target.max_new_tokens,
+            **kwargs
         ) as runner:
             with runner.invoke(self.target.prompt) as invoker:
                 (
