@@ -12,7 +12,7 @@ def generate(prompt: str, model: LanguageModel) -> str:
     """ Generate new text from the given prompt and model.
         Return the generated text as a string """
 
-    with model.generate(max_new_tokens=10) as generator:
+    with model.generate(max_new_tokens=20) as generator:
         with generator.invoke(prompt) as _:
             pass
 

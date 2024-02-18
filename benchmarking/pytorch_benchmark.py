@@ -25,7 +25,7 @@ def generate(prompt: str, model: AutoModelForCausalLM, tokenizer: AutoTokenizer)
     prompt_length = input_tokens.shape[-1]
 
     # generate text
-    generated_output = model.generate(input_tokens, max_length=prompt_length + 10)
+    generated_output = model.generate(input_tokens, max_length=prompt_length + 20)
     generated_text = tokenizer.decode(generated_output[0], skip_special_tokens=True)
 
     return generated_text
