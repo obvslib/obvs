@@ -36,5 +36,5 @@ def run_benchmark(prompt: str, model_id: str, compile_model: bool = False) -> Tu
         Return the generated text and the average runtime """
 
     model, tokenizer = setup(model_id, compile_model)
-    return custom_timeit(generate, 5, 10,  prompt, model, tokenizer)
+    return custom_timeit(generate, 3, 10,  prompt, model, tokenizer)
 

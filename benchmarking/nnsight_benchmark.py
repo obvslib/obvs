@@ -25,6 +25,6 @@ def run_benchmark(prompt: str, model_id: str) -> Tuple[str, float]:
         Return the generated text and the average runtime """
 
     model = setup(model_id)
-    return custom_timeit(generate, 5, 10, prompt, model)
+    return custom_timeit(generate, 3, 10, prompt, model)
 
 
