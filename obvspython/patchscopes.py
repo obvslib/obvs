@@ -33,7 +33,6 @@ from dataclasses import dataclass, field
 from typing import Callable, Sequence, Optional, List, Any
 
 from nnsight import LanguageModel
-from nnsight.models.Mamba import MambaInterp
 
 from obvspython.patchscopes_base import PatchscopesBase
 
@@ -125,10 +124,10 @@ class Patchscope(PatchscopesBase):
         if self.source.model_name == self.target.model_name:
             self.target_model = self.source_model
         else:
-            loader = MambaInterp if "mamba" in self.target.model_name else LanguageModel
             self.target_model = loader(self.target.model_name, device_map=self.target.device)
 
     def _load_mamba(self, model_name: str, device_map: str):
+        from nnsight.models.Mamba import MambaInterp
         return MambaInterp(model_name, device=device_map)
 
     def source_forward_pass(self, source: Optional[SourceContext] = None):
@@ -142,11 +141,11 @@ class Patchscope(PatchscopesBase):
         """
         Get the requested hidden states from the foward pass of the model.
 
-        We use the 'forward' context so we can add the REMOTE option.
+        We use the 'generate' context so we can add the REMOTE option.
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.forward(remote=self.REMOTE) as runner:
+        with self.source_model.generate(remote=self.REMOTE) as runner:
             with runner.invoke(source.prompt) as _:
                 return (
                     getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
@@ -178,15 +177,15 @@ class Patchscope(PatchscopesBase):
             remote=self.REMOTE,
             **kwargs
         ) as runner:
-            with runner.invoke(self.target.prompt) as invoker:
+            with runner.invoke(self.target.prompt) as _:
                 (
                     getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
                     [self.target.layer].output[0][:, self.target.position, :]
                 ) = self._mapped_hidden_state.value
 
+                self._target_outputs.append(self.target_model.lm_head.output[0].save())
                 for generation in range(self.target.max_new_tokens):
-                    self._target_outputs.append(self.target_model.lm_head.output[0].save())
-                    invoker.next()
+                    self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
     def run(self):
         """
