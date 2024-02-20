@@ -33,8 +33,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import List
 
 import torch
 from nnsight import LanguageModel
@@ -97,22 +97,13 @@ class TargetContext(SourceContext):
         )
 
 
-@dataclass
 class Patchscope(PatchscopeBase):
-    source: SourceContext
-    target: TargetContext
-    source_model: LanguageModel = field(init=False)
-    target_model: LanguageModel = field(init=False)
-
-    tokenizer: Any = field(init=False)
-
     REMOTE: bool = False
 
-    _source_hidden_state: torch.Tensor = field(init=False)
-    _mapped_hidden_state: torch.Tensor = field(init=False)
-    _target_outputs: list[torch.Tensor] = field(init=False, default_factory=list)
+    def __init__(self, source: SourceContext, target: TargetContext):
+        self.source = source
+        self.target = target
 
-    def __post_init__(self):
         self._load()
 
         self.tokenizer = self.source_model.tokenizer
@@ -120,6 +111,8 @@ class Patchscope(PatchscopeBase):
 
         self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
         self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
+
+        self._target_outputs: List[torch.Tensor] = []
 
     def _load(self):
         """
@@ -147,16 +140,15 @@ class Patchscope(PatchscopeBase):
         """
         Get the requested hidden states from the foward pass of the model.
 
-        We use the 'generate' context so we can add the REMOTE option.
+        We use the 'trace' context so we can add the REMOTE option.
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.generate(remote=self.REMOTE) as runner:
-            with runner.invoke(source.prompt) as _:
-                return (
-                    getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
-                    [source.layer].output[0][:, source.position, :]
-                ).save()
+        with self.source_model.trace(source.prompt, remote=self.REMOTE) as _:
+            return (
+                getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
+                [source.layer].output[0][:, source.position, :]
+            ).save()
 
     def map(self) -> None:
         """
@@ -179,19 +171,15 @@ class Patchscope(PatchscopeBase):
             kwargs = {"max_new_tokens": self.target.max_new_tokens}
         else:
             kwargs = {"max_length": self.target.max_new_tokens}
-        with self.target_model.generate(
-            remote=self.REMOTE,
-            **kwargs
-        ) as runner:
-            with runner.invoke(self.target.prompt) as _:
-                (
-                    getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
-                    [self.target.layer].output[0][:, self.target.position, :]
-                ) = self._mapped_hidden_state.value
+        with self.target_model.generate(self.target.prompt, remote=self.REMOTE, **kwargs) as _:
+            (
+                getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
+                [self.target.layer].output[0][:, self.target.position, :]
+            ) = self._mapped_hidden_state.value
 
-                self._target_outputs.append(self.target_model.lm_head.output[0].save())
-                for generation in range(self.target.max_new_tokens):
-                    self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
+            self._target_outputs.append(self.target_model.lm_head.output[0].save())
+            for generation in range(self.target.max_new_tokens - 1):
+                self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
     def run(self) -> None:
         """
