@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import List
 
 import torch
 from nnsight import LanguageModel
@@ -112,7 +111,7 @@ class Patchscope(PatchscopeBase):
         self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
         self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
 
-        self._target_outputs: List[torch.Tensor] = []
+        self._target_outputs: list[torch.Tensor] = []
 
     def _load(self):
         """
@@ -135,6 +134,7 @@ class Patchscope(PatchscopeBase):
 
     def _load_mamba(self, model_name: str, device_map: str):
         from nnsight.models.Mamba import MambaInterp
+
         return MambaInterp(model_name, device=device_map)
 
     def source_forward_pass(self) -> None:
@@ -149,10 +149,9 @@ class Patchscope(PatchscopeBase):
             self._source_hidden_state = self.manipulate_source().save()
 
     def manipulate_source(self):
-        return (
-            getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
-            [self.source.layer].output[0][:, self.source.position, :]
-        )
+        return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
+            self.source.layer
+        ].output[0][:, self.source.position, :]
 
     def map(self) -> None:
         """
@@ -170,13 +169,18 @@ class Patchscope(PatchscopeBase):
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.target_model.generate(self.target.prompt, remote=self.REMOTE, **self.generation_kwargs) as _:
+        with self.target_model.generate(
+            self.target.prompt,
+            remote=self.REMOTE,
+            **self.generation_kwargs,
+        ) as _:
             self.manipulate_target()
 
     def manipulate_target(self):
         (
-            getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
-            [self.target.layer].output[0][:, self.target.position, :]
+            getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
+                self.target.layer
+            ].output[0][:, self.target.position, :]
         ) = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())
@@ -191,4 +195,3 @@ class Patchscope(PatchscopeBase):
         self.source_forward_pass()
         self.map()
         self.target_forward_pass()
-
