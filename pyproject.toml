@@ -26,6 +26,7 @@ nnsight = { git = "http://github.com/JadenFiotto-Kaufman/nnsight.git", branch = 
 tiktoken = "^0.5.2"
 plotly = "^5.18.0"
 typer = "^0.9.0"
+kaleido = "0.2.1"
 
 [tool.poetry.dev-dependencies]
 # Everything below here is alphabetically sorted

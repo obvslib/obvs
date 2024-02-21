@@ -51,7 +51,7 @@ def run_over_all_layers(patchscope, target_tokens):
 
 @app.command()
 def main(
-    word: str | None = typer.Argument("USA", help="The word to generate a definition for."),
+    word: str = typer.Argument("USA", help="The word to generate a definition for."),
     source_model: str = "gpt2",
     target_model: str = "gpt2",
     prompt: str = typer.Option(
