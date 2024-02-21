@@ -16,8 +16,8 @@ app = typer.Typer()
 
 # Define the model names for LLaMA-2, Mistral, and GPT-2
 model_names = {
-    # "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
-    # "llama": "meta-llama/Llama-2-13b-hf",
+    "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
+    "llama": "meta-llama/Llama-2-13b-hf",
     # "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
     # "gpt2": "gpt2",
