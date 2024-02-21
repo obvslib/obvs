@@ -186,6 +186,14 @@ class PatchscopeBase(ABC):
 
     @property
     def n_layers(self):
+        self.n_layers_target
+
+    @property
+    def n_layers_source(self):
+        return len(getattr(getattr(self.source_model, self.MODEL_TARGET), self.LAYER_TARGET))
+
+    @property
+    def n_layers_target(self):
         return len(getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET))
 
     def compute_precision_at_1(self, estimated_probs, true_token_index):
