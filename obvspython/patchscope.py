@@ -118,6 +118,13 @@ class Patchscope(PatchscopeBase):
         """
         All models except Mamba load via LanguageModel
         """
+        # For all models except mamba, we need max_new_tokens as the kwarg:
+        if "mamba" not in self.target.model_name:
+            self.generation_kwargs = {"max_new_tokens": self.target.max_new_tokens}
+        else:
+            self.generation_kwargs = {"max_length": self.target.max_new_tokens}
+
+        # For all models except mamba, load with LanguageModel
         loader = self._load_mamba if "mamba" in self.source.model_name else LanguageModel
         self.source_model = loader(self.source.model_name, device_map=self.source.device)
 
@@ -133,22 +140,19 @@ class Patchscope(PatchscopeBase):
     def source_forward_pass(self) -> None:
         """
         Get the source representation.
-        """
-        self._source_hidden_state = self._source_forward_pass(self.source)
-
-    def _source_forward_pass(self, source: SourceContext):
-        """
-        Get the requested hidden states from the foward pass of the model.
 
         We use the 'trace' context so we can add the REMOTE option.
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.trace(source.prompt, remote=self.REMOTE) as _:
-            return (
-                getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
-                [source.layer].output[0][:, source.position, :]
-            ).save()
+        with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
+            self._source_hidden_state = self.manipulate_source().save()
+
+    def manipulate_source(self):
+        return (
+            getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)
+            [self.source.layer].output[0][:, self.source.position, :]
+        )
 
     def map(self) -> None:
         """
@@ -166,20 +170,18 @@ class Patchscope(PatchscopeBase):
 
         For each architecture, you need to know the name of the layers.
         """
-        # For all models except mamba, we need max_new_tokens as the kwarg:
-        if "mamba" not in self.target.model_name:
-            kwargs = {"max_new_tokens": self.target.max_new_tokens}
-        else:
-            kwargs = {"max_length": self.target.max_new_tokens}
-        with self.target_model.generate(self.target.prompt, remote=self.REMOTE, **kwargs) as _:
-            (
-                getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
-                [self.target.layer].output[0][:, self.target.position, :]
-            ) = self._mapped_hidden_state.value
+        with self.target_model.generate(self.target.prompt, remote=self.REMOTE, **self.generation_kwargs) as _:
+            self.manipulate_target()
 
-            self._target_outputs.append(self.target_model.lm_head.output[0].save())
-            for generation in range(self.target.max_new_tokens - 1):
-                self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
+    def manipulate_target(self):
+        (
+            getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)
+            [self.target.layer].output[0][:, self.target.position, :]
+        ) = self._mapped_hidden_state
+
+        self._target_outputs.append(self.target_model.lm_head.output[0].save())
+        for generation in range(self.target.max_new_tokens - 1):
+            self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
     def run(self) -> None:
         """
@@ -189,3 +191,4 @@ class Patchscope(PatchscopeBase):
         self.source_forward_pass()
         self.map()
         self.target_forward_pass()
+

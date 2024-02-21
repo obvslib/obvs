@@ -148,19 +148,41 @@ class PatchscopeBase(ABC):
         """
         Find the position of the target tokens in the source tokens
         """
+        position, _ = self.source_position_tokens(substring)
+        return position
+
+    def source_position_tokens(self, substring):
+        """
+        Find the position of the target tokens in the source tokens
+        """
         if substring not in self.source.prompt:
             raise ValueError(f"{substring} not in {self.source.prompt}")
-        tokens = self.tokenizer.encode(substring)
-        return self.source_tokens.index(tokens[0])
+        try:
+            tokens = self.tokenizer.encode(substring)
+            return self.source_tokens.index(tokens[0]), tokens
+        except ValueError:
+            tokens = self.tokenizer.encode(" " + substring)
+            return self.source_tokens.index(tokens[0]), tokens
 
     def find_in_target(self, substring):
         """
         Find the position of the target tokens in the source tokens
         """
+        position, _ = self.target_position_tokens(substring)
+        return position
+
+    def target_position_tokens(self, substring):
+        """
+        Find the position of the target tokens in the source tokens
+        """
         if substring not in self.target.prompt:
             raise ValueError(f"{substring} not in {self.target.prompt}")
-        tokens = self.tokenizer.encode(substring)
-        return self.target_tokens.index(tokens[0])
+        try:
+            tokens = self.tokenizer.encode(substring)
+            return self.target_tokens.index(tokens[0]), tokens
+        except ValueError:
+            tokens = self.tokenizer.encode(" " + substring)
+            return self.target_tokens.index(tokens[0]), tokens
 
     @property
     def n_layers(self):
