@@ -1,6 +1,8 @@
-from tqdm import tqdm
+from __future__ import annotations
 
 import logging
+
+from tqdm import tqdm
 
 
 # Define TqdmLoggingHandler
@@ -10,7 +12,7 @@ class TqdmLoggingHandler(logging.Handler):
 
     def emit(self, record):
         msg = self.format(record)
-        tqdm.write(msg, end='\n')
+        tqdm.write(msg, end="\n")
 
 
 def set_tqdm_logging(exclude_loggers=None):
@@ -21,7 +23,9 @@ def set_tqdm_logging(exclude_loggers=None):
     loggers = [logging.root] + list(logging.root.manager.loggerDict.values())
 
     for logger in loggers:
-        if isinstance(logger, logging.Logger) and logger.name not in exclude_loggers:  # Exclude specified loggers
+        if (
+            isinstance(logger, logging.Logger) and logger.name not in exclude_loggers
+        ):  # Exclude specified loggers
             logger.handlers = [tqdm_handler]
 
 
@@ -35,9 +39,9 @@ logging.basicConfig(handlers=[TqdmLoggingHandler()], level=logging.INFO)
 logger.setLevel(logging.DEBUG)
 
 # File Handler for my_logger only
-file_handler = logging.FileHandler('experiments.log')
+file_handler = logging.FileHandler("experiments.log")
 file_handler.setLevel(logging.DEBUG)
-file_formatter = logging.Formatter('%(message)s')
+file_formatter = logging.Formatter("%(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 logger.propagate = False  # Prevents the logger from passing messages to the root logger
