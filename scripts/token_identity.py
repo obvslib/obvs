@@ -49,6 +49,11 @@ def run_over_all_layers(patchscope, target_tokens):
     return source_layers, target_layers, values
 
 
+def upate_saved_values(values):
+    # Save the values to a file
+    np.save("scripts/values.npy", values)
+
+
 @app.command()
 def main(
     word: str = typer.Argument("USA", help="The word to generate a definition for."),
