@@ -25,6 +25,7 @@ transformers = "^4.37.1"
 nnsight = { git = "http://github.com/JadenFiotto-Kaufman/nnsight.git", branch = "dev"}
 tiktoken = "^0.5.2"
 plotly = "^5.18.0"
+typer = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
 # Everything below here is alphabetically sorted
