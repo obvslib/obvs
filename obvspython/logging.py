@@ -22,19 +22,13 @@ def set_tqdm_logging(exclude_loggers=None):
 
     for logger in loggers:
         if isinstance(logger, logging.Logger) and logger.name not in exclude_loggers:  # Exclude specified loggers
-            # logger.handlers = [tqdm_handler]
-            # Remove all handlers
-            for handler in logger.handlers:
-                logger.removeHandler(handler)
+            logger.handlers = [tqdm_handler]
 
 
 # Now exclude your file logger by name when calling set_tqdm_logging
 set_tqdm_logging(exclude_loggers={"patchscope"})
 
-# This should be within the `if __name__ == "__main__":` block or inside a function
 logger = logging.getLogger("patchscope")
-
-# Set basic configuration for the logger (optional, if not using basicConfig elsewhere)
 logging.basicConfig(handlers=[TqdmLoggingHandler()], level=logging.INFO)
 
 # Ensure the 'patchscope' logger level is set to allow debug messages through

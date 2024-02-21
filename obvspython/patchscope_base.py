@@ -158,10 +158,10 @@ class PatchscopeBase(ABC):
         if substring not in self.source.prompt:
             raise ValueError(f"{substring} not in {self.source.prompt}")
         try:
-            tokens = self.tokenizer.encode(substring)
+            tokens = self.tokenizer.encode(substring, add_special_tokens=False)
             return self.source_tokens.index(tokens[0]), tokens
         except ValueError:
-            tokens = self.tokenizer.encode(" " + substring)
+            tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
             return self.source_tokens.index(tokens[0]), tokens
 
     def find_in_target(self, substring):
@@ -178,10 +178,10 @@ class PatchscopeBase(ABC):
         if substring not in self.target.prompt:
             raise ValueError(f"{substring} not in {self.target.prompt}")
         try:
-            tokens = self.tokenizer.encode(substring)
+            tokens = self.tokenizer.encode(substring, add_special_tokens=False)
             return self.target_tokens.index(tokens[0]), tokens
         except ValueError:
-            tokens = self.tokenizer.encode(" " + substring)
+            tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
             return self.target_tokens.index(tokens[0]), tokens
 
     @property
