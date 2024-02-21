@@ -64,9 +64,9 @@ def main(
     if target_model in model_names:
         target_model = model_names[target_model]
 
-    source_model = source_model.replace("/", "-")
-    target_model = target_model.replace("/", "-")
-    filename = f"{source_model}_2_{target_model}_{word}"
+    source_model_name = source_model.replace("/", "-")
+    target_model_name = target_model.replace("/", "-")
+    filename = f"{source_model_name}_2_{target_model_name}_{word}"
 
     # prompt = "For a long time, the largest and most famous building in New York was"
     prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
