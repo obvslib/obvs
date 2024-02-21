@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import List
 
 import torch
 from nnsight import LanguageModel
@@ -171,7 +170,9 @@ class Patchscope(PatchscopeBase):
         For each architecture, you need to know the name of the layers.
         """
         with self.target_model.generate(
-            self.target.prompt, remote=self.REMOTE, **self.generation_kwargs,
+            self.target.prompt,
+            remote=self.REMOTE,
+            **self.generation_kwargs,
         ) as _:
             self.manipulate_target()
 
