@@ -25,11 +25,10 @@ model_names = {
 }
 
 
-def run_over_all_layers(patchscope, target_tokens):
+def run_over_all_layers(patchscope, target_tokens, values):
     source_layers = list(range(patchscope.n_layers))
     target_layers = list(range(patchscope.n_layers))
     iterations = len(source_layers) * len(target_layers)
-    values = np.zeros((len(source_layers), len(target_layers)))
     with tqdm(total=iterations) as pbar:
         for i in source_layers:
             for j in target_layers:
@@ -104,7 +103,7 @@ def main(
         values = np.zeros((patchscope.n_layers, patchscope.n_layers))
 
     start = time.time()
-    source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens)
+    source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens, values)
     print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
 
     # Save the values to a file
