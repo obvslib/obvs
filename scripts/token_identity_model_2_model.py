@@ -16,11 +16,11 @@ app = typer.Typer()
 
 # Define the model names for LLaMA-2, Mistral, and GPT-2
 model_names = {
-    "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
-    "llama": "meta-llama/Llama-2-13b-hf",
-    "mamba": "MrGonao/delphi-mamba-100k",
+    # "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
+    # "llama": "meta-llama/Llama-2-13b-hf",
+    # "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
-    "gpt2": "gpt2",
+    # "gpt2": "gpt2",
     "gptj": "EleutherAI/gpt-j-6B",
 }
 
@@ -59,8 +59,7 @@ def main(
         help="Must contain X, which will be replaced with the word",
     ),
 ):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Generating definition for word: {word} using model: {model}")
+    print(f"Generating definition for word: {word} using models {source_model} and {target_model}.")
     if source_model in model_names:
         source_model = model_names[source_model]
     if target_model in model_names:
@@ -73,11 +72,12 @@ def main(
         prompt=prompt,  # Example input text
         model_name=source_model,  # Model name
         position=-1,
-        device=device,
+        device="cuda:0",
     )
 
     target_context = TargetContext.from_source(source_context)
     target_context.model_name = target_model
+    target_context.device = "cuda:1"
     target_context.prompt = (
         "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; X is"
     )
@@ -106,10 +106,10 @@ def main(
 
     source_model = source_model.replace("/", "-")
     target_model = target_model.replace("/", "-")
-    filename = f"{source_model}_2_{target_model}_{word}.json"
+    filename = f"{source_model}_2_{target_model}_{word}"
 
     # Save as png
-    fig.write_image(f"experiments/{filename}.png")
+    fig.write_image(f"scripts/{filename}.png")
     fig.show()
 
 

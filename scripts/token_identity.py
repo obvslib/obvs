@@ -103,10 +103,10 @@ def main(
     model_name = model.replace("/", "-")
     # Get letters for prompt and replace with underscores
     prompt = [c for c in prompt if c.isalpha() or c.isspace()]
-    filename = f"{model_name}_{word}.json"
+    filename = f"{model_name}_{word}"
 
     # Save as png
-    fig.write_image(f"experiments/{filename}.png")
+    fig.write_image(f"scripts/{filename}.png")
     fig.show()
 
 
