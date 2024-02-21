@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
 import time
 
 import numpy as np
-import torch
 import typer
 from tqdm import tqdm
 
@@ -65,6 +65,10 @@ def main(
     if target_model in model_names:
         target_model = model_names[target_model]
 
+    source_model = source_model.replace("/", "-")
+    target_model = target_model.replace("/", "-")
+    filename = f"{source_model}_2_{target_model}_{word}"
+
     # prompt = "For a long time, the largest and most famous building in New York was"
     prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
     # Setup source and target context with the simplest configuration
@@ -94,9 +98,18 @@ def main(
         patchscope.target_words[patchscope.target.position].strip() == "X"
     ), patchscope.target_words[patchscope.target.position]
 
+    if Path(f"scripts/{filename}.npy").exists():
+        values = np.load(f"scripts/{filename}.npy")
+    else:
+        values = np.zeros((patchscope.n_layers, patchscope.n_layers))
+
     start = time.time()
     source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens)
     print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
+
+    # Save the values to a file
+    np.save(f"scripts/{filename}.npy", values)
+
     fig = create_heatmap(source_layers, target_layers, values)
     fig.update_layout(
         title="Token Identity: Surprisal by Layer",

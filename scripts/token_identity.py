@@ -98,12 +98,12 @@ def main(
         patchscope.target_words[patchscope.target.position].strip() == "X"
     ), patchscope.target_words[patchscope.target.position]
 
-    start = time.time()
     if Path(f"scripts/{filename}.npy").exists():
         values = np.load(f"scripts/{filename}.npy")
     else:
         values = np.zeros((patchscope.n_layers, patchscope.n_layers))
 
+    start = time.time()
     source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens, values)
     print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
 
