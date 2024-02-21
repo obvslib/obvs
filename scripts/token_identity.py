@@ -25,8 +25,6 @@ model_names = {
 }
 
 
-
-
 def run_over_all_layers(patchscope, target_tokens):
     source_layers = list(range(patchscope.n_layers))
     target_layers = list(range(patchscope.n_layers))
