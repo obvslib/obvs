@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import typer
 from tqdm import tqdm
+from pathlib import Path
 
 from obvspython.logging import logger
 from obvspython.patchscope import Patchscope, SourceContext, TargetContext
@@ -25,11 +26,10 @@ model_names = {
 }
 
 
-def run_over_all_layers(patchscope, target_tokens):
-    source_layers = list(range(patchscope.n_layers))
+def run_over_all_layers(patchscope, target_tokens, values):
+    source_layers = list(range(patchscope.n_layers // 2))
     target_layers = list(range(patchscope.n_layers))
     iterations = len(source_layers) * len(target_layers)
-    values = np.zeros((len(source_layers), len(target_layers)))
     with tqdm(total=iterations) as pbar:
         for i in source_layers:
             for j in target_layers:
@@ -68,6 +68,9 @@ def main(
     if model in model_names:
         model = model_names[model]
 
+    model_name = model.replace("/", "-")
+    filename = f"{model_name}_{word}"
+
     # prompt = "For a long time, the largest and most famous building in New York was"
     prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
     # Setup source and target context with the simplest configuration
@@ -96,19 +99,23 @@ def main(
     ), patchscope.target_words[patchscope.target.position]
 
     start = time.time()
-    source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens)
+    if Path(f"scripts/{filename}.npy").exists():
+        values = np.load(f"scripts/{filename}.npy")
+    else:
+        values = np.zeros((patchscope.n_layers, patchscope.n_layers))
+
+    source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens, values)
     print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
+
+    # Save the values to a file
+    np.save(f"scripts/{filename}.npy", values)
+
     fig = create_heatmap(source_layers, target_layers, values)
     fig.update_layout(
         title="Token Identity: Surprisal by Layer",
         xaxis_title="Target Layer",
         yaxis_title="Source Layer",
     )
-
-    model_name = model.replace("/", "-")
-    # Get letters for prompt and replace with underscores
-    prompt = [c for c in prompt if c.isalpha() or c.isspace()]
-    filename = f"{model_name}_{word}"
 
     # Save as png
     fig.write_image(f"scripts/{filename}.png")
