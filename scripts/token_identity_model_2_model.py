@@ -26,8 +26,8 @@ model_names = {
 
 
 def run_over_all_layers(patchscope, target_tokens, values):
-    source_layers = list(range(patchscope.n_layers))
-    target_layers = list(range(patchscope.n_layers))
+    source_layers = list(range(patchscope.n_layers_source))
+    target_layers = list(range(patchscope.n_layers_target))
     iterations = len(source_layers) * len(target_layers)
     with tqdm(total=iterations) as pbar:
         for i in source_layers:
@@ -100,7 +100,7 @@ def main(
     if Path(f"scripts/{filename}.npy").exists():
         values = np.load(f"scripts/{filename}.npy")
     else:
-        values = np.zeros((patchscope.n_layers, patchscope.n_layers))
+        values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
 
     start = time.time()
     source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens, values)
