@@ -1,15 +1,16 @@
+from __future__ import annotations
+
 import time
 from typing import Optional
-from tqdm import tqdm
-
-from obvspython.patchscope import SourceContext, TargetContext, Patchscope
-from obvspython.logging import logger
-
-from obvspython.vis import create_heatmap
 
 import numpy as np
-import typer
 import torch
+import typer
+from tqdm import tqdm
+
+from obvspython.logging import logger
+from obvspython.patchscope import Patchscope, SourceContext, TargetContext
+from obvspython.vis import create_heatmap
 
 app = typer.Typer()
 
@@ -37,7 +38,10 @@ def run_over_all_layers(patchscope, target_tokens):
                 patchscope.target.layer = j
 
                 patchscope.run()
-                logger.info(f"Source Layer-{i}, Target Layer-{j}: " + "".join(patchscope.full_output_words()[len(patchscope.target_tokens) - 2:]))
+                logger.info(
+                    f"Source Layer-{i}, Target Layer-{j}: "
+                    + "".join(patchscope.full_output_words()[len(patchscope.target_tokens) - 2 :]),
+                )
 
                 probs = patchscope.probabilities()[-1]
                 values[i, j] = patchscope.compute_surprisal(probs, target_tokens)
@@ -48,9 +52,12 @@ def run_over_all_layers(patchscope, target_tokens):
 
 @app.command()
 def main(
-    word: Optional[str] = typer.Argument("USA", help="The word to generate a definition for."),
+    word: str | None = typer.Argument("USA", help="The word to generate a definition for."),
     model: str = "gpt2",
-    prompt: str = typer.Option("I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy.", help="Must contain X, which will be replaced with the word"),
+    prompt: str = typer.Option(
+        "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy.",
+        help="Must contain X, which will be replaced with the word",
+    ),
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Generating definition for word: {word} using model: {model}")
@@ -68,15 +75,21 @@ def main(
     )
 
     target_context = TargetContext.from_source(source_context)
-    target_context.prompt = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; X is"
+    target_context.prompt = (
+        "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; X is"
+    )
     target_context.max_new_tokens = 1
     patchscope = Patchscope(source=source_context, target=target_context)
 
     target_word = "USA"
     patchscope.source.position, target_tokens = patchscope.source_position_tokens(target_word)
     patchscope.target.position, _ = patchscope.target_position_tokens("X")
-    assert patchscope.source_words[patchscope.source.position].strip() == target_word, patchscope.source_words[patchscope.source.position]
-    assert patchscope.target_words[patchscope.target.position].strip() == "X", patchscope.target_words[patchscope.target.position]
+    assert (
+        patchscope.source_words[patchscope.source.position].strip() == target_word
+    ), patchscope.source_words[patchscope.source.position]
+    assert (
+        patchscope.target_words[patchscope.target.position].strip() == "X"
+    ), patchscope.target_words[patchscope.target.position]
 
     start = time.time()
     source_layers, target_layers, values = run_over_all_layers(patchscope, target_tokens)
@@ -85,7 +98,7 @@ def main(
     fig.update_layout(
         title="Token Identity: Surprisal by Layer",
         xaxis_title="Target Layer",
-        yaxis_title="Source Layer"
+        yaxis_title="Source Layer",
     )
 
     model_name = model.replace("/", "-")
