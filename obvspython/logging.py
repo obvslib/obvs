@@ -1,0 +1,49 @@
+from tqdm import tqdm
+
+import logging
+
+
+# Define TqdmLoggingHandler
+class TqdmLoggingHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+
+    def emit(self, record):
+        msg = self.format(record)
+        tqdm.write(msg, end='\n')
+
+
+def set_tqdm_logging(exclude_loggers=None):
+    exclude_loggers = set(exclude_loggers or [])
+    tqdm_handler = TqdmLoggingHandler()
+
+    # Get all existing loggers (including the root) and replace their handlers.
+    loggers = [logging.root] + list(logging.root.manager.loggerDict.values())
+
+    for logger in loggers:
+        if isinstance(logger, logging.Logger) and logger.name not in exclude_loggers:  # Exclude specified loggers
+            # logger.handlers = [tqdm_handler]
+            # Remove all handlers
+            for handler in logger.handlers:
+                logger.removeHandler(handler)
+
+
+# Now exclude your file logger by name when calling set_tqdm_logging
+set_tqdm_logging(exclude_loggers={"patchscope"})
+
+# This should be within the `if __name__ == "__main__":` block or inside a function
+logger = logging.getLogger("patchscope")
+
+# Set basic configuration for the logger (optional, if not using basicConfig elsewhere)
+logging.basicConfig(handlers=[TqdmLoggingHandler()], level=logging.INFO)
+
+# Ensure the 'patchscope' logger level is set to allow debug messages through
+logger.setLevel(logging.DEBUG)
+
+# File Handler for my_logger only
+file_handler = logging.FileHandler('experiments.log')
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter('%(message)s')
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
+logger.propagate = False  # Prevents the logger from passing messages to the root logger
