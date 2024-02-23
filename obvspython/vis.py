@@ -3,7 +3,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 
 
-def create_heatmap(model_1_layers, model_2_layers, values):
+def create_heatmap(model_1_layers, model_2_layers, values) -> go.Figure:
     """
     Create a heatmap of the values between the layers of two models.
 
@@ -13,7 +13,7 @@ def create_heatmap(model_1_layers, model_2_layers, values):
         values (list): The values to be plotted.
 
     Returns:
-        None
+        go.Figure: The heatmap figure.
     """
     # Create the heatmap
     fig = go.Figure(
