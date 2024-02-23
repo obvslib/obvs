@@ -38,8 +38,8 @@ from dataclasses import dataclass
 import torch
 from nnsight import LanguageModel
 
-from obvspython.patchscope_base import PatchscopeBase
 from obvspython.logging import logger
+from obvspython.patchscope_base import PatchscopeBase
 
 
 @dataclass
@@ -100,9 +100,10 @@ class TargetContext(SourceContext):
 class ModelLoader:
     @staticmethod
     def load(model_name: str, device: str) -> LanguageModel:
-        if 'mamba' in model_name:
+        if "mamba" in model_name:
             # We import here because MambaInterp depends on some GPU libs that might not be installed.
             from nnsight.models.Mamba import MambaInterp
+
             logger.info(f"Loading Mamba model: {model_name}")
             return MambaInterp(model_name, device=device)
         else:
@@ -127,12 +128,18 @@ class Patchscope(PatchscopeBase):
 
         self.source_model = ModelLoader.load(self.source.model_name, device=self.source.device)
 
-        if self.source.model_name == self.target.model_name and self.source.device == self.target.device:
+        if (
+            self.source.model_name == self.target.model_name
+            and self.source.device == self.target.device
+        ):
             self.target_model = self.source_model
         else:
             self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
 
-        self.generation_kwargs = ModelLoader.generation_kwargs(self.target.model_name, self.target.max_new_tokens)
+        self.generation_kwargs = ModelLoader.generation_kwargs(
+            self.target.model_name,
+            self.target.max_new_tokens,
+        )
 
         self.tokenizer = self.source_model.tokenizer
         self.init_positions()
