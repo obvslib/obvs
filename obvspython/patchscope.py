@@ -125,12 +125,12 @@ class Patchscope(PatchscopeBase):
         self.target = target
         logger.info(f"Patchscope initialize with source: {source} and target: {target}")
 
-        self.source_model = ModelLoader.load(self.source.model_name, device_map=self.source.device)
+        self.source_model = ModelLoader.load(self.source.model_name, device=self.source.device)
 
         if self.source.model_name == self.target.model_name and self.source.device == self.target.device:
             self.target_model = self.source_model
         else:
-            self.target_model = ModelLoader.load(self.target.model_name, device_map=self.target.device)
+            self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
 
         self.generation_kwargs = ModelLoader.generation_kwargs(self.target.model_name, self.target.max_new_tokens)
 
