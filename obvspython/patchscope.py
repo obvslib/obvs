@@ -39,6 +39,7 @@ import torch
 from nnsight import LanguageModel
 
 from obvspython.patchscope_base import PatchscopeBase
+from obvspython.logging import logger
 
 
 @dataclass
@@ -53,7 +54,7 @@ class SourceContext:
     model_name: str = "gpt2"
     device: str = "cuda:0"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SourceContext(prompt={self.prompt}, position={self.position}, "
             f"model_name={self.model_name}, layer={self.layer}, device={self.device})"
@@ -76,7 +77,7 @@ class TargetContext(SourceContext):
         source: SourceContext,
         mapping_function: Callable[[torch.Tensor], torch.Tensor] | None = None,
         max_new_tokens: int = 10,
-    ):
+    ) -> TargetContext:
         return TargetContext(
             prompt=source.prompt,
             position=source.position,
@@ -87,7 +88,7 @@ class TargetContext(SourceContext):
             device=source.device,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"TargetContext(prompt={self.prompt}, position={self.position}, "
             f"model_name={self.model_name}, layer={self.layer}, device={self.device}, "
@@ -96,14 +97,42 @@ class TargetContext(SourceContext):
         )
 
 
+class ModelLoader:
+    @staticmethod
+    def load(model_name: str, device: str) -> LanguageModel:
+        if 'mamba' in model_name:
+            # We import here because MambaInterp depends on some GPU libs that might not be installed.
+            from nnsight.models.Mamba import MambaInterp
+            logger.info(f"Loading Mamba model: {model_name}")
+            return MambaInterp(model_name, device=device)
+        else:
+            logger.info(f"Loading NNsight LanguagModel: {model_name}")
+            return LanguageModel(model_name, device_map=device)
+
+    @staticmethod
+    def generation_kwargs(model_name: str, max_new_tokens: int) -> dict:
+        if "mamba" not in model_name:
+            return {"max_new_tokens": max_new_tokens}
+        else:
+            return {"max_length": max_new_tokens}
+
+
 class Patchscope(PatchscopeBase):
     REMOTE: bool = False
 
-    def __init__(self, source: SourceContext, target: TargetContext):
+    def __init__(self, source: SourceContext, target: TargetContext) -> None:
         self.source = source
         self.target = target
+        logger.info(f"Patchscope initialize with source: {source} and target: {target}")
 
-        self._load()
+        self.source_model = ModelLoader.load(self.source.model_name, device_map=self.source.device)
+
+        if self.source.model_name == self.target.model_name and self.source.device == self.target.device:
+            self.target_model = self.source_model
+        else:
+            self.target_model = ModelLoader.load(self.target.model_name, device_map=self.target.device)
+
+        self.generation_kwargs = ModelLoader.generation_kwargs(self.target.model_name, self.target.max_new_tokens)
 
         self.tokenizer = self.source_model.tokenizer
         self.init_positions()
@@ -112,30 +141,6 @@ class Patchscope(PatchscopeBase):
         self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
 
         self._target_outputs: list[torch.Tensor] = []
-
-    def _load(self):
-        """
-        All models except Mamba load via LanguageModel
-        """
-        # For all models except mamba, we need max_new_tokens as the kwarg:
-        if "mamba" not in self.target.model_name:
-            self.generation_kwargs = {"max_new_tokens": self.target.max_new_tokens}
-        else:
-            self.generation_kwargs = {"max_length": self.target.max_new_tokens}
-
-        # For all models except mamba, load with LanguageModel
-        loader = self._load_mamba if "mamba" in self.source.model_name else LanguageModel
-        self.source_model = loader(self.source.model_name, device_map=self.source.device)
-
-        if self.source.model_name == self.target.model_name:
-            self.target_model = self.source_model
-        else:
-            self.target_model = loader(self.target.model_name, device_map=self.target.device)
-
-    def _load_mamba(self, model_name: str, device_map: str):
-        from nnsight.models.Mamba import MambaInterp
-
-        return MambaInterp(model_name, device=device_map)
 
     def source_forward_pass(self) -> None:
         """
@@ -148,7 +153,12 @@ class Patchscope(PatchscopeBase):
         with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
             self._source_hidden_state = self.manipulate_source().save()
 
-    def manipulate_source(self):
+    def manipulate_source(self) -> torch.Tensor:
+        """
+        Get the hidden state from the source representation.
+
+        NB: This is seperated out from the source_forward_pass method to allow for batching.
+        """
         return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
             self.source.layer
         ].output[0][:, self.source.position, :]
@@ -176,7 +186,7 @@ class Patchscope(PatchscopeBase):
         ) as _:
             self.manipulate_target()
 
-    def manipulate_target(self):
+    def manipulate_target(self) -> None:
         (
             getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
                 self.target.layer

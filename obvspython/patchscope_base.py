@@ -154,6 +154,12 @@ class PatchscopeBase(ABC):
     def source_position_tokens(self, substring):
         """
         Find the position of the target tokens in the source tokens
+
+        NB: The try: except block handles the difference between gpt2 and llama
+        tokenization. Perhaps this can be better dealt with a seperate tokenizer
+        class that handles the differences between the tokenizers. There are a
+        few subtleties there, and tokenizing properly is important for getting
+        the best out of your model.
         """
         if substring not in self.source.prompt:
             raise ValueError(f"{substring} not in {self.source.prompt}")
@@ -174,6 +180,12 @@ class PatchscopeBase(ABC):
     def target_position_tokens(self, substring):
         """
         Find the position of the target tokens in the source tokens
+
+        NB: The try: except block handles the difference between gpt2 and llama
+        tokenization. Perhaps this can be better dealt with a seperate tokenizer
+        class that handles the differences between the tokenizers. There are a
+        few subtleties there, and tokenizing properly is important for getting
+        the best out of your model.
         """
         if substring not in self.target.prompt:
             raise ValueError(f"{substring} not in {self.target.prompt}")
