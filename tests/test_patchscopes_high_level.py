@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from obvspython.patchscope import ModelLoader
+
 
 class TestPatchscope:
     @staticmethod
@@ -115,6 +117,7 @@ class TestPatchscope:
         patchscope.source.prompt = "a dog is a dog. a rat is a rat. a cat"
         patchscope.target.prompt = patchscope.source.prompt
         patchscope.target.max_new_tokens = 4
+        patchscope.generation_kwargs = ModelLoader.generation_kwargs(patchscope.target.model_name, 4)
 
         patchscope.run()
 
@@ -131,6 +134,7 @@ class TestPatchscope:
         patchscope.target.position = None
         patchscope.init_positions()
         patchscope.target.max_new_tokens = 4
+        patchscope.generation_kwargs = ModelLoader.generation_kwargs(patchscope.target.model_name, 4)
 
         patchscope.source.layer = 3
         patchscope.target.layer = 3
@@ -153,6 +157,7 @@ class TestPatchscope:
             "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
         )
         patchscope.target.max_new_tokens = 4
+        patchscope.generation_kwargs = ModelLoader.generation_kwargs(patchscope.target.model_name, 4)
 
         # Take the final token from the source
         patchscope.source.position = -1
@@ -182,6 +187,7 @@ class TestPatchscope:
             "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
         )
         patchscope.target.max_new_tokens = 4
+        patchscope.generation_kwargs = ModelLoader.generation_kwargs(patchscope.target.model_name, 4)
 
         # Take the final token from the source
         patchscope.source.position = -1

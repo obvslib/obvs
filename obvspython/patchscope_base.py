@@ -198,7 +198,7 @@ class PatchscopeBase(ABC):
 
     @property
     def n_layers(self):
-        self.n_layers_target
+        return self.n_layers_target
 
     @property
     def n_layers_source(self):
