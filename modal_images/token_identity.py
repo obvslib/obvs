@@ -88,17 +88,10 @@ class Runner:
         print("Running")
         source_layers = list(range(self.patchscope.n_layers))
         target_layers = list(range(self.patchscope.n_layers))
-        iterations = len(source_layers) * len(target_layers)
 
-        # count = 0
-        # with tqdm(total=iterations) as pbar:
-        #     outputs = self.patchscope.over_pairs(source_layers, target_layers)
-        #     pbar.update(1)
-        #     print(len(source_layers) - count)
+        outputs = self.patchscope.over_pairs(source_layers, target_layers)
 
-        with tqdm(total=iterations) as pbar:
-            outputs = self.patchscope.over(source_layers, target_layers)
-            pbar.update(1)
+        outputs = self.patchscope.over(source_layers, target_layers)
 
         print("Computing surprisal")
         target_output = 0
