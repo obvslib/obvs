@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
 import typer
 from tqdm import tqdm
-from pathlib import Path
 
 from obvspython.logging import logger
 from obvspython.patchscope import Patchscope, SourceContext, TargetContext
-from obvspython.vis import create_heatmap, plot_surprisal
+from obvspython.vis import create_heatmap
 
 app = typer.Typer()
 
@@ -23,7 +23,7 @@ model_names = {
     "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
     "gptj": "EleutherAI/gpt-j-6B",
-    "gemma": "google/gemma-2b"
+    "gemma": "google/gemma-2b",
 }
 
 
@@ -118,7 +118,11 @@ def main(
         values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
 
     start = time.time()
-    source_layers, target_layers, values, outputs = run_over_all_layers(patchscope, target_tokens, values)
+    source_layers, target_layers, values, outputs = run_over_all_layers(
+        patchscope,
+        target_tokens,
+        values,
+    )
     print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
 
     # Save the values to a file
@@ -128,7 +132,12 @@ def main(
     # fig.write_image(f"scripts/{filename}.png")
     # fig.show()
 
-    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
+    fig = create_heatmap(
+        source_layers,
+        target_layers,
+        values,
+        title=f"Token Identity: Surprisal by Layer {model_name}",
+    )
     # Save as png
     fig.write_image(f"scripts/{filename}.png")
     fig.show()
