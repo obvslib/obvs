@@ -19,10 +19,10 @@ model_names = {
     "llama": "meta-llama/Llama-2-13b-hf",
     "gpt2": "gpt2",
     "mamba": "MrGonao/delphi-mamba-100k",
-    "mistral": "mistralai/Mistral-7B-v0.1",
+    "mistral": "mistralai/Mistral-7B-v0.1",         # Starts at 36GB but it grows over time, so either some optimization or a 80GB A100
     "gptj": "EleutherAI/gpt-j-6B",
     "gemma2": "google/gemma-2b",
-    "gemma7": "google/gemma-7b"
+    "gemma7": "google/gemma-7b"             # Seems to be about 27GB? In which case it could run on a 40GB A100
 }
 
 images = {
