@@ -36,21 +36,21 @@ def run_over_all_layers(patchscope, target_tokens, values):
         pbar.update(1)
 
     logger.info("Computing surprisal")
-    target_output = -1
-    for i in source_layers:
-        # Get the output of the run
-        probs = torch.softmax(outputs[i][target_output], dim=-1)
-        values[i] = patchscope.compute_surprisal(probs[-1], target_tokens)
-    logger.info("Done")
+    target_output = 0
 
     # logger.info("Computing surprisal")
-    # target_output = -1
+    # target_output = 0
     # for i in source_layers:
-    #     for j in target_layers:
-    #         # Get the output of the run
-    #         probs = torch.softmax(outputs[i][j][target_output], dim=-1)
-    #         values[i, j] = patchscope.compute_surprisal(probs[-1], target_tokens)
-    # logger.info("Done")
+    #     # Get the output of the run
+    #     probs = torch.softmax(outputs[i][target_output], dim=-1)
+    #     values[i] = patchscope.compute_surprisal(probs[-1], target_tokens)
+
+    for i in source_layers:
+        for j in target_layers:
+            # Get the output of the run
+            probs = torch.softmax(outputs[i][j][target_output], dim=-1)
+            values[i, j] = patchscope.compute_surprisal(probs[-1], target_tokens)
+    logger.info("Done")
 
     return source_layers, target_layers, values, outputs
 
@@ -62,11 +62,11 @@ def upate_saved_values(values):
 
 @app.command()
 def main(
-    word: str = typer.Argument("USA", help="The word to generate a definition for."),
+    word: str = typer.Argument("boat", help="The expected next token."),
     model: str = "gpt2",
     prompt: str = typer.Option(
-        "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy.",
-        help="Must contain X, which will be replaced with the word",
+        "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
+        help="Source Prompt",
     ),
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -77,8 +77,7 @@ def main(
     model_name = model.replace("/", "-")
     filename = f"{model_name}_{word}"
 
-    # prompt = "For a long time, the largest and most famous building in New York was"
-    prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
+    # prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
     # Setup source and target context with the simplest configuration
     source_context = SourceContext(
         prompt=prompt,  # Example input text
@@ -89,20 +88,26 @@ def main(
 
     target_context = TargetContext.from_source(source_context)
     target_context.prompt = (
-        "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; X is"
+        "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
     )
-    target_context.max_new_tokens = 3
+    target_context.max_new_tokens = 1
     patchscope = Patchscope(source=source_context, target=target_context)
 
-    target_word = "USA"
-    patchscope.source.position, target_tokens = patchscope.source_position_tokens(target_word)
-    patchscope.target.position, _ = patchscope.target_position_tokens("X")
-    assert (
-        patchscope.source_words[patchscope.source.position].strip() == target_word
-    ), patchscope.source_words[patchscope.source.position]
-    assert (
-        patchscope.target_words[patchscope.target.position].strip() == "X"
-    ), patchscope.target_words[patchscope.target.position]
+    try:
+        patchscope.source.position, target_tokens = patchscope.source_position_tokens(word)
+        patchscope.target.position, _ = patchscope.target_position_tokens("X")
+
+        assert (
+            patchscope.source_words[patchscope.source.position].strip() == word
+        ), patchscope.source_words[patchscope.source.position]
+        assert (
+            patchscope.target_words[patchscope.target.position].strip() == "X"
+        ), patchscope.target_words[patchscope.target.position]
+
+    except ValueError:
+        target_tokens = patchscope.tokenizer.encode(" boat", add_special_tokens=False)
+        patchscope.source.position = -1
+        patchscope.target.position = -1
 
     if Path(f"scripts/{filename}.npy").exists():
         values = np.load(f"scripts/{filename}.npy")
@@ -116,19 +121,14 @@ def main(
     # Save the values to a file
     np.save(f"scripts/{filename}.npy", values)
 
-    fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
-    fig.write_image(f"scripts/{filename}.png")
-    fig.show()
-
-    # fig = create_heatmap(source_layers, target_layers, values)
-    # fig.update_layout(
-    #     title="Token Identity: Surprisal by Layer",
-    #     xaxis_title="Target Layer",
-    #     yaxis_title="Source Layer",
-    # )
-    # # Save as png
+    # fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
     # fig.write_image(f"scripts/{filename}.png")
     # fig.show()
+
+    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
+    # Save as png
+    fig.write_image(f"scripts/{filename}.png")
+    fig.show()
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ def plot_surprisal(layers, values, title="Surprisal") -> go.Figure:
     )
 
     # Pin the y-axis range to 0-15
-    fig.update_yaxes(range=[0, 15])
+    fig.update_yaxes(range=[0, 17])
 
     # Update the layout of the figure
     fig.update_layout(
