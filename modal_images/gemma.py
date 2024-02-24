@@ -18,8 +18,10 @@ def download_model():
     import os
     token = os.environ["HUGGINGFACE_TOKEN"].strip()
     from huggingface_hub import snapshot_download
+    from transformers.utils import move_cache
     snapshot_download(model_names["gemma7"], token=token, revision="main")
     snapshot_download(model_names["gemma2"], token=token, revision="main")
+    move_cache()
 
 
 image = (
@@ -30,6 +32,7 @@ image = (
     .pip_install(
         "git+https://github.com/fergusfettes/obvs.git@modal",
     )
+    # .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .run_function(
         download_model,
         secrets=[Secret.from_name("my-huggingface-secret")],
