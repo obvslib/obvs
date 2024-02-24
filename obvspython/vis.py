@@ -28,8 +28,8 @@ def create_heatmap(model_1_layers, model_2_layers, values, title="Layer by Layer
     # Update the layout of the figure
     fig.update_layout(
         title=title,
-        xaxis_title="Source Layers",
-        yaxis_title="Target Layers",
+        xaxis_title="Target Layers",
+        yaxis_title="Source Layers",
     )
 
     return fig
