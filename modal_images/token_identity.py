@@ -5,14 +5,12 @@ import time
 import numpy as np
 import torch
 from tqdm import tqdm
-from pathlib import Path
 
-from obvspython.logging import logger
-from obvspython.patchscope import Patchscope, SourceContext, TargetContext
 from obvspython.vis import create_heatmap, plot_surprisal
 
 from modal import Stub, gpu, method
-from modal_images.gemma import image
+from modal_images.gemma import image as gemma_image
+from modal_images.mistral import image as mistral_image
 
 
 # Define the model names for LLaMA-2, Mistral, and GPT-2
@@ -26,61 +24,107 @@ model_names = {
     "gemma": "google/gemma-2b"
 }
 
+images = {
+    "gemma": gemma_image,
+    "mistral": mistral_image,
+    "gpt2": gemma_image,
+}
 
-stub = Stub(image=image, name="token_identity")
+
+stub = Stub(image=gemma_image, name="token_identity")
 
 
 @stub.cls(
     gpu=gpu.A100(memory=80, count=1),
-    timeout=60 * 20,
+    timeout=60 * 60 * 2,
     container_idle_timeout=60 * 5,
 )
 class Runner:
+    def setup(self, prompt, model, word):
+        from obvspython.patchscope import Patchscope, SourceContext, TargetContext
+
+        print("Starting Setup")
+
+        # Setup source and target context with the simplest configuration
+        source_context = SourceContext(
+            prompt=prompt,  # Example input text
+            model_name=model,  # Model name
+            position=-1,
+            device="cuda",
+        )
+
+        target_context = TargetContext.from_source(source_context)
+        target_context.prompt = (
+            "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+        )
+        target_context.max_new_tokens = 1
+        self.patchscope = Patchscope(source=source_context, target=target_context)
+
+        try:
+            self.patchscope.source.position, target_tokens = self.patchscope.source_position_tokens(word)
+            self.patchscope.target.position, _ = self.patchscope.target_position_tokens("X")
+
+            assert (
+                self.patchscope.source_words[self.patchscope.source.position].strip() == word
+            ), self.patchscope.source_words[self.patchscope.source.position]
+            assert (
+                self.patchscope.target_words[self.patchscope.target.position].strip() == "X"
+            ), self.patchscope.target_words[self.patchscope.target.position]
+
+        except ValueError:
+            self.target_tokens = self.patchscope.tokenizer.encode(" boat", add_special_tokens=False)
+            self.patchscope.source.position = -1
+            self.patchscope.target.position = -1
+
+        self.values = np.zeros((self.patchscope.n_layers_source, self.patchscope.n_layers_target))
+
+        print("Setup complete")
+
     @method()
-    def run(patchscope, target_tokens, values):
-        source_layers = list(range(patchscope.n_layers))
-        target_layers = list(range(patchscope.n_layers))
+    def run(self, prompt, model, word):
+        self.setup(prompt, model, word)
+        print("Running")
+        source_layers = list(range(self.patchscope.n_layers))
+        target_layers = list(range(self.patchscope.n_layers))
         iterations = len(source_layers) * len(target_layers)
 
+        # count = 0
+        # with tqdm(total=iterations) as pbar:
+        #     outputs = self.patchscope.over_pairs(source_layers, target_layers)
+        #     pbar.update(1)
+        #     print(len(source_layers) - count)
+
         with tqdm(total=iterations) as pbar:
-            outputs = patchscope.over_pairs(source_layers, target_layers)
+            outputs = self.patchscope.over(source_layers, target_layers)
             pbar.update(1)
 
-        # with tqdm(total=iterations) as pbar:
-        #     outputs = patchscope.over(source_layers, target_layers)
-        #     pbar.update(1)
-
-        logger.info("Computing surprisal")
+        print("Computing surprisal")
         target_output = 0
 
-        for i in source_layers:
-            # Get the output of the run
-            probs = torch.softmax(outputs[i][target_output], dim=-1)
-            values[i] = patchscope.compute_surprisal(probs[-1], target_tokens)
-
         # for i in source_layers:
-        #     for j in target_layers:
-        #         # Get the output of the run
-        #         probs = torch.softmax(outputs[i][j][target_output].value, dim=-1)
-        #         values[i, j] = patchscope.compute_surprisal(probs[-1], target_tokens)
+        #     # Get the output of the run
+        #     probs = torch.softmax(outputs[i][target_output], dim=-1)
+        #     self.values[i] = self.patchscope.compute_surprisal(probs[-1], self.target_tokens)
 
-        logger.info("Done")
+        for i in source_layers:
+            for j in target_layers:
+                # Get the output of the run
+                probs = torch.softmax(outputs[i][j][target_output].value, dim=-1)
+                self.values[i, j] = self.patchscope.compute_surprisal(probs[-1], self.target_tokens)
 
-        return source_layers, target_layers, values, outputs
-
-    @method()
-    def test():
-        import subprocess
-        subprocess.run(["nvidia-smi"])
+        print("Done")
+        print(type(self.values))
+        print(type(self.values[0]))
+        print(type(self.values[0][0]))
+        return source_layers, target_layers, self.values
 
 
 @stub.local_entrypoint()
 def main(
     word: str = "boat",
-    model: str = "gemma",
+    model: str = "gpt2",
     prompt: str = "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
 ):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Generating definition for word: {word} using model: {model}")
     if model in model_names:
         model = model_names[model]
@@ -88,56 +132,19 @@ def main(
     model_name = model.replace("/", "-")
     filename = f"{model_name}_{word}"
 
-    # Setup source and target context with the simplest configuration
-    source_context = SourceContext(
-        prompt=prompt,  # Example input text
-        model_name=model,  # Model name
-        position=-1,
-        device=device,
-    )
-
-    target_context = TargetContext.from_source(source_context)
-    target_context.prompt = (
-        "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
-    )
-    target_context.max_new_tokens = 1
-    patchscope = Patchscope(source=source_context, target=target_context)
-
-    try:
-        patchscope.source.position, target_tokens = patchscope.source_position_tokens(word)
-        patchscope.target.position, _ = patchscope.target_position_tokens("X")
-
-        assert (
-            patchscope.source_words[patchscope.source.position].strip() == word
-        ), patchscope.source_words[patchscope.source.position]
-        assert (
-            patchscope.target_words[patchscope.target.position].strip() == "X"
-        ), patchscope.target_words[patchscope.target.position]
-
-    except ValueError:
-        target_tokens = patchscope.tokenizer.encode(" boat", add_special_tokens=False)
-        patchscope.source.position = -1
-        patchscope.target.position = -1
-
-    if Path(f"scripts/{filename}.npy").exists():
-        values = np.load(f"scripts/{filename}.npy")
-    else:
-        values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
-
     start = time.time()
     runner = Runner()
-    runner.test.remote()
-    # source_layers, target_layers, values, outputs = runner.run.remote(patchscope, target_tokens, values)
-    # print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
-    #
-    # # Save the values to a file
-    # np.save(f"scripts/{filename}.npy", values)
-    #
+    source_layers, target_layers, values = runner.run.remote(prompt, model, word)
+    print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
+
+    # Save the values to a file
+    np.save(f"scripts/{filename}.npy", values)
+
     # fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
     # fig.write_image(f"scripts/{filename}.png")
     # fig.show()
-    #
-    # # fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
-    # # # Save as png
-    # # fig.write_image(f"scripts/{filename}.png")
-    # # fig.show()
+
+    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
+    # Save as png
+    fig.write_image(f"scripts/{filename}.png")
+    fig.show()
