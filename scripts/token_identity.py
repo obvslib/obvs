@@ -31,15 +31,18 @@ def run_over_all_layers(patchscope, target_tokens, values):
     source_layers = list(range(patchscope.n_layers))
     target_layers = list(range(patchscope.n_layers))
     iterations = len(source_layers) * len(target_layers)
+
+    # with tqdm(total=iterations) as pbar:
+    #     outputs = patchscope.over_pairs(source_layers, target_layers)
+    #     pbar.update(1)
+
     with tqdm(total=iterations) as pbar:
-        outputs = patchscope.over_pairs(source_layers, target_layers)
+        outputs = patchscope.over(source_layers, target_layers)
         pbar.update(1)
 
     logger.info("Computing surprisal")
     target_output = 0
 
-    # logger.info("Computing surprisal")
-    # target_output = 0
     # for i in source_layers:
     #     # Get the output of the run
     #     probs = torch.softmax(outputs[i][target_output], dim=-1)
@@ -48,7 +51,7 @@ def run_over_all_layers(patchscope, target_tokens, values):
     for i in source_layers:
         for j in target_layers:
             # Get the output of the run
-            probs = torch.softmax(outputs[i][j][target_output], dim=-1)
+            probs = torch.softmax(outputs[i][j][target_output].value, dim=-1)
             values[i, j] = patchscope.compute_surprisal(probs[-1], target_tokens)
     logger.info("Done")
 
@@ -112,7 +115,7 @@ def main(
     if Path(f"scripts/{filename}.npy").exists():
         values = np.load(f"scripts/{filename}.npy")
     else:
-        values = np.zeros((patchscope.n_layers, patchscope.n_layers))
+        values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
 
     start = time.time()
     source_layers, target_layers, values, outputs = run_over_all_layers(patchscope, target_tokens, values)
