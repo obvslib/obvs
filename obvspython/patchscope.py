@@ -124,9 +124,9 @@ class Patchscope(PatchscopeBase):
     def __init__(self, source: SourceContext, target: TargetContext) -> None:
         self.source = source
         self.target = target
-        logger.info(f"Patchscope initialize with source: {source} and target: {target}")
+        logger.info(f"Patchscope initialize with source:\n{source}\nand target:\n{target}")
 
-        self.source_model = ModelLoader.load(self.source.model_name, device_map=self.source.device)
+        self.source_model = ModelLoader.load(self.source.model_name, device=self.source.device)
 
         if (
             self.source.model_name == self.target.model_name
@@ -134,10 +134,7 @@ class Patchscope(PatchscopeBase):
         ):
             self.target_model = self.source_model
         else:
-            self.target_model = ModelLoader.load(
-                self.target.model_name,
-                device_map=self.target.device,
-            )
+            self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
 
         self.generation_kwargs = ModelLoader.generation_kwargs(
             self.target.model_name,
@@ -204,7 +201,7 @@ class Patchscope(PatchscopeBase):
         ) = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())
-        for generation in range(self.target.max_new_tokens - 1):
+        for _ in range(self.target.max_new_tokens - 1):
             self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
     def run(self) -> None:
