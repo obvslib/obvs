@@ -13,8 +13,10 @@ model_names = {
 }
 
 
-# Spec for an image where gptj is cached locally
 def download_model():
+    """
+    Download the model and move the cache
+    """
     import os
     token = os.environ["HUGGINGFACE_TOKEN"].strip()
     from huggingface_hub import snapshot_download
@@ -31,8 +33,9 @@ image = (
     .apt_install("git")
     .pip_install(
         "git+https://github.com/fergusfettes/obvs.git@modal",
+        "hf_transfer"
     )
-    # .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .run_function(
         download_model,
         secrets=[Secret.from_name("my-huggingface-secret")],

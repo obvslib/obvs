@@ -68,6 +68,11 @@ class Runner:
 
         return source_layers, target_layers, values, outputs
 
+    @method()
+    def test():
+        import subprocess
+        subprocess.run(["nvidia-smi"])
+
 
 @stub.local_entrypoint()
 def main(
@@ -121,21 +126,18 @@ def main(
 
     start = time.time()
     runner = Runner()
-    source_layers, target_layers, values, outputs = runner.run.remote(patchscope, target_tokens, values)
-    print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
-
-    # Save the values to a file
-    np.save(f"scripts/{filename}.npy", values)
-
-    fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
-    fig.write_image(f"scripts/{filename}.png")
-    fig.show()
-
-    # fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
-    # # Save as png
+    runner.test.remote()
+    # source_layers, target_layers, values, outputs = runner.run.remote(patchscope, target_tokens, values)
+    # print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
+    #
+    # # Save the values to a file
+    # np.save(f"scripts/{filename}.npy", values)
+    #
+    # fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
     # fig.write_image(f"scripts/{filename}.png")
     # fig.show()
-
-
-if __name__ == "__main__":
-    app()
+    #
+    # # fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
+    # # # Save as png
+    # # fig.write_image(f"scripts/{filename}.png")
+    # # fig.show()
