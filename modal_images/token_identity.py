@@ -21,11 +21,13 @@ model_names = {
     "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
     "gptj": "EleutherAI/gpt-j-6B",
-    "gemma": "google/gemma-2b"
+    "gemma2": "google/gemma-2b",
+    "gemma7": "google/gemma-7b"
 }
 
 images = {
-    "gemma": gemma_image,
+    "gemma2": gemma_image,
+    "gemma7": gemma_image,
     "mistral": mistral_image,
     "gpt2": gemma_image,
 }
@@ -122,7 +124,7 @@ class Runner:
 @stub.local_entrypoint()
 def main(
     word: str = "boat",
-    model: str = "gpt2",
+    model: str = "gemma7",
     prompt: str = "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
 ):
     print(f"Generating definition for word: {word} using model: {model}")
