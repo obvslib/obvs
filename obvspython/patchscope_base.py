@@ -146,14 +146,14 @@ class PatchscopeBase(ABC):
 
     def find_in_source(self, substring):
         """
-        Find the position of the target tokens in the source tokens
+        Find the position of the substring tokens in the source prompt
         """
         position, _ = self.source_position_tokens(substring)
         return position
 
     def source_position_tokens(self, substring):
         """
-        Find the position of the target tokens in the source tokens
+        Find the position of a substring in the source prompt, and return the substring tokenized
 
         NB: The try: except block handles the difference between gpt2 and llama
         tokenization. Perhaps this can be better dealt with a seperate tokenizer
@@ -172,14 +172,14 @@ class PatchscopeBase(ABC):
 
     def find_in_target(self, substring):
         """
-        Find the position of the target tokens in the source tokens
+        Find the position of the substring tokens in the target prompt
         """
         position, _ = self.target_position_tokens(substring)
         return position
 
     def target_position_tokens(self, substring):
         """
-        Find the position of the target tokens in the source tokens
+        Find the position of a substring in the target prompt, and return the substring tokenized
 
         NB: The try: except block handles the difference between gpt2 and llama
         tokenization. Perhaps this can be better dealt with a seperate tokenizer
@@ -198,7 +198,7 @@ class PatchscopeBase(ABC):
 
     @property
     def n_layers(self):
-        self.n_layers_target
+        return self.n_layers_target
 
     @property
     def n_layers_source(self):
