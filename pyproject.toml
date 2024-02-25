@@ -6,13 +6,9 @@ name = "obvs"
 version = "0.0.1"
 description = "Making Transformers Obvious"
 authors = ["Jamie Coombes <jamie@example.com>"]
-license = "UNLICENSED"
-classifiers = ["Private :: Do Not Upload"]
+license = "MIT"
 packages = [
-  # { include = "obvs" },
-  { include = "obvspython" },
-  # Add more packages here, e.g.
-  # { include = "module_name", from = "obvs" },
+  { include = "obvs" },
 ]
 
 [tool.poetry.dependencies]
