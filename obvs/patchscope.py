@@ -222,11 +222,11 @@ class Patchscope(PatchscopeBase):
         Clear the outputs and the cache
         """
         self._target_outputs = []
-        if self.source_output:
+        if hasattr(self, "source_output"):
             del self.source_output
-        if self._source_hidden_state:
+        if hasattr(self, "_source_hidden_state"):
             del self._source_hidden_state
-        if self._mapped_hidden_state:
+        if hasattr(self, "_mapped_hidden_state"):
             del self._mapped_hidden_state
         gc.collect()
         torch.cuda.empty_cache()
