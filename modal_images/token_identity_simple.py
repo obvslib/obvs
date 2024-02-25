@@ -32,8 +32,8 @@ stub = Stub(image=gemma_image, name="token_identity", secrets=[Secret.from_name(
 
 @stub.cls(
     # gpu=gpu.A100(memory=40, count=1),
-    gpu=gpu.A10G(count=1),   # 24 GB
-    # gpu=gpu.T4(count=1),   # 16 GB
+    # gpu=gpu.A10G(count=1),   # 24 GB
+    gpu=gpu.T4(count=1),   # 16 GB
     # cpu=1,
     timeout=60 * 30,
     container_idle_timeout=60 * 5,

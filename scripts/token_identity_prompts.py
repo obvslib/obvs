@@ -74,7 +74,7 @@ def main(model_name, target_prompt, samples, full=False):
             std_surprisal,
             f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus"
         )
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{target_prompt.replace(' ', '')[-10:]}.html")
+        fig.write_html(f"mean_surprisal_{model_names[model_name]}_{len(samples)}_samples_target_{target_prompt.replace(' ', '')[-10:]}.html")
         fig.show()
 
     elif len(surprisals[0].shape) == 2:
