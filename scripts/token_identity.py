@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import random
+import string
 import time
-from pathlib import Path
 
 import numpy as np
 import torch
 import typer
 from tqdm import tqdm
+from pathlib import Path
 
 from obvspython.logging import logger
 from obvspython.patchscope import Patchscope, SourceContext, TargetContext
-from obvspython.vis import create_heatmap
+from obvspython.vis import create_heatmap, plot_surprisal
 
 app = typer.Typer()
 
@@ -23,7 +25,7 @@ model_names = {
     "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
     "gptj": "EleutherAI/gpt-j-6B",
-    "gemma": "google/gemma-2b",
+    "gemma": "google/gemma-2b"
 }
 
 
@@ -65,7 +67,7 @@ def upate_saved_values(values):
 
 @app.command()
 def main(
-    word: str = typer.Argument("boat", help="The expected next token."),
+    word: str = typer.Argument(" boat", help="The expected next token."),
     model: str = "gpt2",
     prompt: str = typer.Option(
         "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
@@ -80,7 +82,6 @@ def main(
     model_name = model.replace("/", "-")
     filename = f"{model_name}_{word}"
 
-    # prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
     # Setup source and target context with the simplest configuration
     source_context = SourceContext(
         prompt=prompt,  # Example input text
@@ -118,11 +119,7 @@ def main(
         values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
 
     start = time.time()
-    source_layers, target_layers, values, outputs = run_over_all_layers(
-        patchscope,
-        target_tokens,
-        values,
-    )
+    source_layers, target_layers, values, outputs = run_over_all_layers(patchscope, target_tokens, values)
     print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
 
     # Save the values to a file
@@ -132,12 +129,7 @@ def main(
     # fig.write_image(f"scripts/{filename}.png")
     # fig.show()
 
-    fig = create_heatmap(
-        source_layers,
-        target_layers,
-        values,
-        title=f"Token Identity: Surprisal by Layer {model_name}",
-    )
+    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name} {prompt}")
     # Save as png
     fig.write_image(f"scripts/{filename}.png")
     fig.show()
