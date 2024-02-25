@@ -33,12 +33,12 @@ def main(model_name, n_samples=5, full=False):
 
     ti = TokenIdentity("", model_names[model_name])
 
-    source_layers = range(ti.patchscope.n_layers_source // 3)
-    target_layers = range(ti.patchscope.n_layers_target // 3)
+    source_layers = range(ti.patchscope.n_layers_source)
+    target_layers = range(ti.patchscope.n_layers_target)
 
     surprisals = []
     for prompt in samples:
-        ti.filename = f"token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
+        ti.filename = f"{'full' if full else ''}token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
         ti.patchscope.source.prompt = prompt
         ti.run(
             source_layers=source_layers,
@@ -73,7 +73,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate the surprisal of a set of samples using a model")
     parser.add_argument("model_name", type=str, help="The name of the model to use")
     parser.add_argument("--n", type=int, default=5, help="The number of samples to average over")
-    parser.add_argument("--full", action="store_false", help="Whether to run over all layers or pairs")
+    parser.add_argument("--full", action="store_true", help="Whether to run over all layers or pairs")
     args = parser.parse_args()
 
-    main(args.model_name)
+    print(args.model_name, args.n, args.full)
+    main(args.model_name, args.n, args.full)
