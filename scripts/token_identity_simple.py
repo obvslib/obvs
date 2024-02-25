@@ -6,8 +6,19 @@ dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming
 shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
 
 samples = []
-for example in shuffled_dataset.take(10):
+for example in shuffled_dataset.take(20):
     samples.append(example['text'])
+
+
+model_names = {
+    "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
+    "llama": "meta-llama/Llama-2-13b-hf",
+    "gpt2": "gpt2",
+    "mamba": "MrGonao/delphi-mamba-100k",
+    "mistral": "mistralai/Mistral-7B-v0.1",
+    "gptj": "EleutherAI/gpt-j-6B",
+    "gemma": "google/gemma-2b"
+}
 
 
 # Trim the samples to the first 300 characters
@@ -20,8 +31,9 @@ samples = [sample[:sample.rfind(' ')] for sample in samples]
 samples = [sample.strip() for sample in samples]
 
 surprisals = []
+ti = TokenIdentity("", model_names["mistral"])
 for prompt in samples:
-    ti = TokenIdentity(prompt)
+    ti.patchscope.source.prompt = prompt
     ti.run().compute_surprisal().visualize()
     surprisals.append(ti.surprisal)
 
