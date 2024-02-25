@@ -31,8 +31,15 @@ prompts = [
     "hello! here is a something I'm trying to decode, it is normally written like so: x",
     "hello! here is a something I'm trying to understand, it is normally written like so: x",
     "Hello! Here is a something I'm trying to understand, it is normally written like so: x",
+    "Hello! Here is a something I'm trying to understand, it is normally written like so: 'x",
     "I found a few files on an old hard drive. Here are some fragments: x",
     "I found a few files on an old hard drive. Here are some fragments: x is",
+    "I found a few files on an old hard drive. Here are some fragments: 'x",
+    "Someone sent me this. Do you understand it? x",
+    "Someone sent me this. Do you understand it? x is",
+    "Someone sent me this. Do you understand it? 'x",
+    "Imaging someone saying such a random thing! (I'll tell you what they said: 'x",
+    "Imaging someone writing such a random thing! (I'll tell you what they said: 'x",
 ]
 
 
@@ -106,5 +113,10 @@ if __name__ == "__main__":
     parser.add_argument("--full", action="store_true", help="Whether to run over all layers or pairs")
     args = parser.parse_args()
 
-    for prompt in prompts:
-        main(args.model_name, prompt, args.n, args.full)
+    # for prompt in prompts:
+    #     main(args.model_name, prompt, args.n, args.full)
+
+    # Run each in a seperate process
+    import multiprocessing
+    with multiprocessing.Pool(len(prompts)) as p:
+        p.starmap(main, [(args.model_name, prompt, args.n, args.full) for prompt in prompts])
