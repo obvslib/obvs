@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from obvspython.patchscope import ModelLoader
+from obvs.patchscope import ModelLoader
 
 
 class TestPatchscope:

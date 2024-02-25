@@ -34,12 +34,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from tqdm import tqdm
 
 import torch
 from nnsight import LanguageModel
 
-from obvspython.logging import logger
-from obvspython.patchscope_base import PatchscopeBase
+from obvs.logging import logger
+from obvs.patchscope_base import PatchscopeBase
 
 
 @dataclass
@@ -52,7 +53,7 @@ class SourceContext:
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
-    device: str = "cuda:0"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __repr__(self) -> str:
         return (
@@ -159,6 +160,7 @@ class Patchscope(PatchscopeBase):
         """
         with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
             self._source_hidden_state = self.manipulate_source().save()
+            self.source_output = self.source_model.lm_head.output[0].save()
 
     def manipulate_source(self) -> torch.Tensor:
         """
@@ -189,6 +191,7 @@ class Patchscope(PatchscopeBase):
         with self.target_model.generate(
             self.target.prompt,
             remote=self.REMOTE,
+            use_cache=False,
             **self.generation_kwargs,
         ) as _:
             self.manipulate_target()
@@ -243,7 +246,7 @@ class Patchscope(PatchscopeBase):
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
         outputs = []
-        for i, j in zip(source_layers, target_layers):
+        for i, j in tqdm(zip(source_layers, target_layers)):
             self.source.layer = i
             self.target.layer = j
             logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
