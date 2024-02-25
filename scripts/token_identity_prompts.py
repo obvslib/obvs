@@ -43,21 +43,8 @@ prompts = [
 ]
 
 
-def main(model_name, target_prompt, n_samples=5, full=False):
-    samples = []
-    for example in shuffled_dataset.take(n_samples):
-        samples.append(example['text'])
-
-    # Trim the samples to the first 300 characters
-    samples = [sample[:1000] for sample in samples]
-
-    # Make sure it ends on a space
-    samples = [sample[:sample.rfind(' ')] for sample in samples]
-
-    # Strip the spaces
-    samples = [sample.strip() for sample in samples]
-
-    ti = TokenIdentity("", model_names[model_name])
+def main(model_name, target_prompt, samples, full=False):
+    ti = TokenIdentity("", model_names[model_name], device="cpu")
     ti.patchscope.target.prompt = target_prompt
 
     source_layers = range(ti.patchscope.n_layers_source)
@@ -70,7 +57,6 @@ def main(model_name, target_prompt, n_samples=5, full=False):
         ti.run(
             source_layers=source_layers,
             target_layers=target_layers if full else None,
-            device="cpu",
         ).compute_surprisal().visualize()
         surprisals.append(ti.surprisal)
 
@@ -86,7 +72,7 @@ def main(model_name, target_prompt, n_samples=5, full=False):
             ti.source_layers,
             mean_surprisal,
             std_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus"
         )
         fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{target_prompt.replace(' ', '')[-10:]}.html")
         fig.show()
@@ -99,7 +85,7 @@ def main(model_name, target_prompt, n_samples=5, full=False):
             ti.source_layers,
             ti.target_layers,
             mean_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus"
         )
         fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{target_prompt.replace(' ', '')[-10:]}.html")
         fig.show()
@@ -116,6 +102,19 @@ if __name__ == "__main__":
 
     # for prompt in prompts:
     #     main(args.model_name, prompt, args.n, args.full)
+
+    samples = []
+    for example in shuffled_dataset.take(args.n):
+        samples.append(example['text'])
+
+    # Trim the samples to the first 300 characters
+    samples = [sample[:1000] for sample in samples]
+
+    # Make sure it ends on a space
+    samples = [sample[:sample.rfind(' ')] for sample in samples]
+
+    # Strip the spaces
+    samples = [sample.strip() for sample in samples]
 
     # Run each in a seperate process
     import multiprocessing
