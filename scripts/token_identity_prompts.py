@@ -69,7 +69,8 @@ def main(model_name, target_prompt, n_samples=5, full=False):
         ti.patchscope.source.prompt = prompt
         ti.run(
             source_layers=source_layers,
-            target_layers=target_layers if full else None
+            target_layers=target_layers if full else None,
+            device="cpu",
         ).compute_surprisal().visualize()
         surprisals.append(ti.surprisal)
 
