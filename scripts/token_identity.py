@@ -31,7 +31,7 @@ def main(model_name, n_samples=5, full=False):
     # Strip the spaces
     samples = [sample.strip() for sample in samples]
 
-    ti = TokenIdentity("", model_names[model_name])
+    ti = TokenIdentity("", model_names[model_name], device="cpu")
 
     source_layers = range(ti.patchscope.n_layers_source)
     target_layers = range(ti.patchscope.n_layers_target)

@@ -146,6 +146,23 @@ class TokenIdentity(Patchscope):
             # Otherwise, run over the same set of layers
             self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
 
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
+        elif hasattr(self, "source_layers"):
+            self.surprisal = np.zeros(len(self.source_layers))
+
+        # Get the first output to initialize the state of the patchscope
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            for i, source_layer in enumerate(self.source_layers):
+                for j, target_layer in enumerate(self.target_layers):
+                    self.nextloop(next(self.outputs), word, i, j)
+        elif hasattr(self, "source_layers"):
+            for i, output in enumerate(self.outputs):
+                self.nextloop(next(self.outputs), word, i, None)
+
+        return self
+
+    def nextloop(self, output, word, i, j):
         if isinstance(word, str):
             if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
                 # Note to devs: we probably want some tokenizer helpers for this kind of thing
@@ -160,26 +177,16 @@ class TokenIdentity(Patchscope):
         gc.collect()
 
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
-        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
-            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
-        elif hasattr(self, "source_layers"):
-            self.surprisal = np.zeros(len(self.source_layers))
 
-        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
-            for i, source_layer in enumerate(self.source_layers):
-                for j, target_layer in enumerate(self.target_layers):
-                    probs = torch.softmax(next(self.outputs), dim=-1)
-                    self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
-        elif hasattr(self, "source_layers"):
-            for i, output in enumerate(self.outputs):
-                probs = torch.softmax(output, dim=-1)
-                self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+        probs = torch.softmax(output, dim=-1)
+        if i and j:
+            self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+        else:
+            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
         logger.info("Done")
 
         if self.filename:
             np.save(self.filename.with_suffix(".npy"), self.surprisal)
-
-        return self
 
     def visualize(self, show: bool = True):
         if not hasattr(self, "surprisal"):
