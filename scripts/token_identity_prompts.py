@@ -50,6 +50,9 @@ def main(model_name, target_prompt, samples, full=False):
     source_layers = range(ti.patchscope.n_layers_source)
     target_layers = range(ti.patchscope.n_layers_target)
 
+    # Remove everything except alphanumeric characters
+    clean_prompt = ''.join(e for e in target_prompt if e.isalnum())
+
     surprisals = []
     for prompt in samples:
         ti.filename = f"{'full' if full else ''}token_identity_{model_name}_{prompt.replace(' ', '')[:10]}_{target_prompt[-10:]}"
@@ -72,9 +75,9 @@ def main(model_name, target_prompt, samples, full=False):
             ti.source_layers,
             mean_surprisal,
             std_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus"
+            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus with prompt {target_prompt}"
         )
-        fig.write_html(f"mean_surprisal_{model_names[model_name]}_{len(samples)}_samples_target_{target_prompt.replace(' ', '')[-10:]}.html")
+        fig.write_html(f"mean_surprisal_{model_names[model_name]}_{len(samples)}_samples_target_{clean_prompt[-20:]}.html")
         fig.show()
 
     elif len(surprisals[0].shape) == 2:
@@ -85,9 +88,9 @@ def main(model_name, target_prompt, samples, full=False):
             ti.source_layers,
             ti.target_layers,
             mean_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus"
+            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus with prompt {target_prompt}"
         )
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{target_prompt.replace(' ', '')[-10:]}.html")
+        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{clean_prompt[-20:]}.html")
         fig.show()
 
 
