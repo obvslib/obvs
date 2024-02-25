@@ -31,7 +31,7 @@ samples = [sample[:sample.rfind(' ')] for sample in samples]
 samples = [sample.strip() for sample in samples]
 
 surprisals = []
-ti = TokenIdentity("", model_names["mistral"])
+ti = TokenIdentity("", model_names["mistral"], filename="token_identity_mistral")
 for prompt in samples:
     ti.patchscope.source.prompt = prompt
     ti.run().compute_surprisal().visualize()
