@@ -18,7 +18,7 @@ model_names = {
 
 
 prompts = [
-    "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is",
+    # "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is",
     "bat is god; 135 is 5; hello is shoe; black is not; six is old; x is",
     "bat ➡️ bat; 135 ➡️ 135; hello ➡️ hello; black ➡️ black; shoe ➡️ shoe; x ➡️",
     "bat is bat, 135 is 135, hello is hello, black is black, shoe is shoe, x is",
