@@ -70,15 +70,18 @@ class TokenIdentity(Patchscope):
 
         return self
 
-    def compute_surprisal(self, word):
-        self.expected = word
+    def compute_surprisal(self, word: Optional[str] = None):
         if isinstance(word, str):
             if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
                 # Note to devs: we probably want some tokenizer helpers for this kind of thing
                 logger.warning("Target should probably start with a space!")
             target = self.patchscope.tokenizer.encode(word)
         else:
-            target = word
+            # Otherwise, we find the next token from the source output:
+            target = self.patchscope.source_output[-1].argmax(dim=-1).item()
+
+        import time
+        time.sleep(0.1)
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
         self.surprisal = np.zeros(len(self.layers))
         for i, output in enumerate(self.outputs):
@@ -99,7 +102,7 @@ class TokenIdentity(Patchscope):
         self.fig = plot_surprisal(
             self.layers,
             self.surprisal,
-            title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}, Target: {self.expected}",
+            title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
         )
 
         if self.filename:

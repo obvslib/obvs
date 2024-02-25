@@ -160,6 +160,7 @@ class Patchscope(PatchscopeBase):
         """
         with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
             self._source_hidden_state = self.manipulate_source().save()
+            self.source_output = self.source_model.lm_head.output[0].save()
 
     def manipulate_source(self) -> torch.Tensor:
         """
