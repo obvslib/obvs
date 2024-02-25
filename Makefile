@@ -7,4 +7,4 @@ publish:
 install:
 	pip install -e .
 	pip install hf_transfer
-	apt install neovim
+	apt install neovim btop -y

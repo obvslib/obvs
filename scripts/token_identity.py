@@ -40,10 +40,10 @@ def main(model_name, n_samples=5, full=False):
     for prompt in samples:
         ti.filename = f"{'full' if full else ''}token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
         ti.patchscope.source.prompt = prompt
-        ti.run(
+        ti.run_and_compute(
             source_layers=source_layers,
             target_layers=target_layers if full else None
-        ).compute_surprisal().visualize()
+        ).visualize()
         surprisals.append(ti.surprisal)
 
     # Average the surprisals, calculate the standard deviation and plot with plotly
