@@ -60,7 +60,7 @@ def main(model_name, n_samples=5, full=False):
             std_surprisal,
             f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
         )
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{len(samples)}_samples.html")
         fig.show()
 
     elif len(surprisals[0].shape) == 2:
@@ -73,7 +73,7 @@ def main(model_name, n_samples=5, full=False):
             mean_surprisal,
             f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
         )
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{len(samples)}_samples.html")
         fig.show()
 
 
