@@ -33,13 +33,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 import torch
 from nnsight import LanguageModel
-from nnsight.contexts import Invoker
 
+from obvspython.logging import logger
 from obvspython.patchscope_base import PatchscopeBase
 
 
@@ -55,7 +54,7 @@ class SourceContext:
     model_name: str = "gpt2"
     device: str = "cuda:0"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SourceContext(prompt={self.prompt}, position={self.position}, "
             f"model_name={self.model_name}, layer={self.layer}, device={self.device})"
@@ -78,7 +77,7 @@ class TargetContext(SourceContext):
         source: SourceContext,
         mapping_function: Callable[[torch.Tensor], torch.Tensor] | None = None,
         max_new_tokens: int = 10,
-    ):
+    ) -> TargetContext:
         return TargetContext(
             prompt=source.prompt,
             position=source.position,
@@ -89,7 +88,7 @@ class TargetContext(SourceContext):
             device=source.device,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"TargetContext(prompt={self.prompt}, position={self.position}, "
             f"model_name={self.model_name}, layer={self.layer}, device={self.device}, "
@@ -98,73 +97,78 @@ class TargetContext(SourceContext):
         )
 
 
-@dataclass
+class ModelLoader:
+    @staticmethod
+    def load(model_name: str, device: str) -> LanguageModel:
+        if "mamba" in model_name:
+            # We import here because MambaInterp depends on some GPU libs that might not be installed.
+            from nnsight.models.Mamba import MambaInterp
+
+            logger.info(f"Loading Mamba model: {model_name}")
+            return MambaInterp(model_name, device=device)
+        else:
+            logger.info(f"Loading NNsight LanguagModel: {model_name}")
+            return LanguageModel(model_name, device_map=device)
+
+    @staticmethod
+    def generation_kwargs(model_name: str, max_new_tokens: int) -> dict:
+        if "mamba" not in model_name:
+            return {"max_new_tokens": max_new_tokens}
+        else:
+            return {"max_length": max_new_tokens}
+
+
 class Patchscope(PatchscopeBase):
-    source: SourceContext
-    target: TargetContext
-    source_model: LanguageModel = field(init=False)
-    target_model: LanguageModel = field(init=False)
-
-    tokenizer: Any = field(init=False)
-
     REMOTE: bool = False
 
-    _source_hidden_state: torch.Tensor = field(init=False)
-    _mapped_hidden_state: torch.Tensor = field(init=False)
-    _target_outputs: list[torch.Tensor] = field(init=False, default_factory=list)
+    def __init__(self, source: SourceContext, target: TargetContext) -> None:
+        self.source = source
+        self.target = target
+        logger.info(f"Patchscope initialize with source:\n{source}\nand target:\n{target}")
 
-    def __post_init__(self):
-        # Load models
-        self.source_model = LanguageModel(self.source.model_name, device_map=self.source.device)
+        self.source_model = ModelLoader.load(self.source.model_name, device=self.source.device)
+
         if (
             self.source.model_name == self.target.model_name
             and self.source.device == self.target.device
         ):
             self.target_model = self.source_model
         else:
-            self.target_model = LanguageModel(self.target.model_name, device_map=self.target.device)
+            self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
+
+        self.generation_kwargs = ModelLoader.generation_kwargs(
+            self.target.model_name,
+            self.target.max_new_tokens,
+        )
 
         self.tokenizer = self.source_model.tokenizer
         self.init_positions()
 
+        self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
+        self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
+
+        self._target_outputs: list[torch.Tensor] = []
+
     def source_forward_pass(self) -> None:
         """
         Get the source representation.
-        """
-        self._source_hidden_state = self._source_forward_pass(self.source)
 
-    def _source_forward_pass(self, source: SourceContext):
-        """
-        Get the requested hidden states from the foward pass of the model.
-
-        We use the 'forward' context so we can add the REMOTE option.
+        We use the 'trace' context so we can add the REMOTE option.
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.forward(remote=self.REMOTE) as runner:
-            with runner.invoke(source.prompt) as _:
-                if "gpt2" in self.source.model_name:
-                    return self._gpt_source_invoker(source)
-                elif "lama" in self.source.model_name:
-                    return self._llama2_source_invoker(source)
-                else:
-                    raise ValueError(f"Model {self.source.model_name} not supported")
+        with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
+            self._source_hidden_state = self.manipulate_source().save()
 
-    def _gpt_source_invoker(self, source: SourceContext):
+    def manipulate_source(self) -> torch.Tensor:
         """
-        Get the hidden state from any GPT2 model
-        """
-        return (
-            self.source_model.transformer.h[source.layer].output[0][:, source.position, :]
-        ).save()
+        Get the hidden state from the source representation.
 
-    def _llama2_source_invoker(self, source: SourceContext):
+        NB: This is seperated out from the source_forward_pass method to allow for batching.
         """
-        Get the hidden state from any Llama2 model
-        """
-        return (
-            self.source_model.model.layers[source.layer].output[0][:, source.position, :]
-        ).save()
+        return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
+            self.source.layer
+        ].output[0][:, self.source.position, :]
 
     def map(self) -> None:
         """
@@ -183,40 +187,22 @@ class Patchscope(PatchscopeBase):
         For each architecture, you need to know the name of the layers.
         """
         with self.target_model.generate(
+            self.target.prompt,
             remote=self.REMOTE,
-            max_new_tokens=self.target.max_new_tokens,
-        ) as runner:
-            with runner.invoke(self.target.prompt) as invoker:
-                if "gpt2" in self.source.model_name:
-                    self._gpt_target_invoker(invoker)
-                elif "lama" in self.source.model_name:
-                    self._llama2_target_invoker(invoker)
-                else:
-                    raise ValueError(f"Model {self.target.model_name} not supported")
+            **self.generation_kwargs,
+        ) as _:
+            self.manipulate_target()
 
-    def _gpt_target_invoker(self, invoker: Invoker.Invoker):
-        """
-        Patch the target representation for GPT2 models and save the output
-        """
+    def manipulate_target(self) -> None:
         (
-            self.target_model.transformer.h[self.target.layer].output[0][:, self.target.position, :]
-        ) = self._mapped_hidden_state.value
+            getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
+                self.target.layer
+            ].output[0][:, self.target.position, :]
+        ) = self._mapped_hidden_state
 
-        for generation in range(self.target.max_new_tokens):
-            self._target_outputs.append(self.target_model.lm_head.output[0].save())
-            invoker.next()
-
-    def _llama2_target_invoker(self, invoker: Invoker.Invoker):
-        """
-        Patch the target representation for Llama2 models and save the output
-        """
-        (
-            self.target_model.model.layers[self.target.layer].output[0][:, self.target.position, :]
-        ) = self._mapped_hidden_state.value
-
-        for generation in range(self.target.max_new_tokens):
-            self._target_outputs.append(self.target_model.lm_head.output[0].save())
-            invoker.next()
+        self._target_outputs.append(self.target_model.lm_head.output[0].save())
+        for _ in range(self.target.max_new_tokens - 1):
+            self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
     def run(self) -> None:
         """

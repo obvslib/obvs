@@ -46,3 +46,4 @@ pyrightconfig.json
 
 # https://www.gitignore.io/
 /experiments/
+/utils/

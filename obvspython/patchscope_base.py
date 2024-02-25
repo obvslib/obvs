@@ -10,6 +10,17 @@ class PatchscopeBase(ABC):
     A base class with lots of helper functions
     """
 
+    def get_model_specifics(self, model_name):
+        """
+        Get the model specific attributes.
+        The following works for gpt2, llama2 and mistral models.
+        """
+        if "gpt" in model_name:
+            return "transformer", "h"
+        if "mamba" in model_name:
+            return "backbone", "layers"
+        return "model", "layers"
+
     @abstractmethod
     def source_forward_pass(self) -> None:
         pass
@@ -106,6 +117,13 @@ class PatchscopeBase(ABC):
         tokens = torch.cat(tensors_list, dim=0)
         return tokens.argmax(dim=-1).tolist()
 
+    def llama_output(self):
+        """
+        For llama, if you don't decode them all together, they don't add the spaces.
+        """
+        tokens = self._output_tokens()
+        return self.tokenizer.decode(tokens)
+
     def full_output_words(self):
         """
         Return the generated output from the target model
@@ -128,36 +146,67 @@ class PatchscopeBase(ABC):
 
     def find_in_source(self, substring):
         """
-        Find the position of the target tokens in the source tokens
+        Find the position of the substring tokens in the source prompt
+        """
+        position, _ = self.source_position_tokens(substring)
+        return position
+
+    def source_position_tokens(self, substring):
+        """
+        Find the position of a substring in the source prompt, and return the substring tokenized
+
+        NB: The try: except block handles the difference between gpt2 and llama
+        tokenization. Perhaps this can be better dealt with a seperate tokenizer
+        class that handles the differences between the tokenizers. There are a
+        few subtleties there, and tokenizing properly is important for getting
+        the best out of your model.
         """
         if substring not in self.source.prompt:
             raise ValueError(f"{substring} not in {self.source.prompt}")
-        tokens = self.tokenizer.encode(substring)
-        return self.source_tokens.index(tokens[0])
+        try:
+            tokens = self.tokenizer.encode(substring, add_special_tokens=False)
+            return self.source_tokens.index(tokens[0]), tokens
+        except ValueError:
+            tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
+            return self.source_tokens.index(tokens[0]), tokens
 
     def find_in_target(self, substring):
         """
-        Find the position of the target tokens in the source tokens
+        Find the position of the substring tokens in the target prompt
+        """
+        position, _ = self.target_position_tokens(substring)
+        return position
+
+    def target_position_tokens(self, substring):
+        """
+        Find the position of a substring in the target prompt, and return the substring tokenized
+
+        NB: The try: except block handles the difference between gpt2 and llama
+        tokenization. Perhaps this can be better dealt with a seperate tokenizer
+        class that handles the differences between the tokenizers. There are a
+        few subtleties there, and tokenizing properly is important for getting
+        the best out of your model.
         """
         if substring not in self.target.prompt:
             raise ValueError(f"{substring} not in {self.target.prompt}")
-        tokens = self.tokenizer.encode(substring)
-        return self.target_tokens.index(tokens[0])
+        try:
+            tokens = self.tokenizer.encode(substring, add_special_tokens=False)
+            return self.target_tokens.index(tokens[0]), tokens
+        except ValueError:
+            tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
+            return self.target_tokens.index(tokens[0]), tokens
 
     @property
     def n_layers(self):
-        if "gpt" in self.target.model_name:
-            return self._n_layers_gpt
-        elif "lama" in self.target.model_name:
-            return self._n_layers_llama2
+        return self.n_layers_target
 
     @property
-    def _n_layers_gpt(self):
-        return len(self.target_model.transformer.h)
+    def n_layers_source(self):
+        return len(getattr(getattr(self.source_model, self.MODEL_TARGET), self.LAYER_TARGET))
 
     @property
-    def _n_layers_llama2(self):
-        return len(self.target_model.model.layers)
+    def n_layers_target(self):
+        return len(getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET))
 
     def compute_precision_at_1(self, estimated_probs, true_token_index):
         """
