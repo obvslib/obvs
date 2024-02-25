@@ -236,9 +236,10 @@ class Patchscope(PatchscopeBase):
         :param target_layers: A list of layer indices or a range of layer indices.
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
+        logger.info("Running sets.")
         outputs = []
         for i in source_layers:
-            self.show_size(outputs)
+            self.show_size(outputs[0])
             self.source.layer = i
             inner_outputs = []
             for j in target_layers:
@@ -268,9 +269,9 @@ class Patchscope(PatchscopeBase):
         :param target_layers: A list of layer indices or a range of layer indices.
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
+        logger.info("Running pairs.")
         outputs = []
         for i, j in tqdm(zip(source_layers, target_layers)):
-            self.show_size(outputs)
             self.source.layer = i
             self.target.layer = j
             logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
@@ -278,4 +279,5 @@ class Patchscope(PatchscopeBase):
             logger.info(self.full_output())
             logger.info(f"Saving {len(self._target_outputs)} outputs")
             outputs.append(self._target_outputs)
+            self.show_size(outputs)
         return outputs
