@@ -119,4 +119,4 @@ if __name__ == "__main__":
     # Run each in a seperate process
     import multiprocessing
     with multiprocessing.Pool(len(prompts)) as p:
-        p.starmap(main, [(args.model_name, prompt, args.n, args.full) for prompt in prompts])
+        p.starmap(main, [(args.model_name, prompt, samples, args.full) for prompt in prompts])
