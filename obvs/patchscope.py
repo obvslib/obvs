@@ -238,6 +238,7 @@ class Patchscope(PatchscopeBase):
         """
         outputs = []
         for i in source_layers:
+            self.show_size(outputs)
             self.source.layer = i
             inner_outputs = []
             for j in target_layers:
@@ -249,6 +250,15 @@ class Patchscope(PatchscopeBase):
                 inner_outputs.append(self._target_outputs)
             outputs.append(inner_outputs)
         return outputs
+
+    def show_size(self, outputs: list[torch.Tensor]) -> None:
+        """
+        Show the size of the outputs. I think they are filling up the GPU
+        Outputs are a list of torch.Tensor. So we can check the size of the list and the size of each tensor.
+        """
+        logger.info(f"Outputs size: {len(outputs)}")
+        for i, output in enumerate(outputs):
+            logger.info(f"Output {i} size: {output.element_size() * output.nelement()}")
 
     def over_pairs(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
         """
