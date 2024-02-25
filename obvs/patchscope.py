@@ -240,10 +240,8 @@ class Patchscope(PatchscopeBase):
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
         logger.info("Running sets.")
-        outputs = []
         for i in source_layers:
             self.source.layer = i
-            inner_outputs = []
             for j in target_layers:
                 self.target.layer = j
                 logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
@@ -251,9 +249,7 @@ class Patchscope(PatchscopeBase):
                 logger.info(self.full_output())
                 logger.info("Saving last token outputs")
                 # Output sizes are too large. For now, we only need the last character of the first output.
-                inner_outputs.append(self._target_outputs[0][-1, :])
-            outputs.append(inner_outputs)
-        return outputs
+                yield self._target_outputs[0][-1, :]
 
     # def show_size(self, outputs: list[torch.Tensor]) -> None:
     #     """
@@ -281,7 +277,6 @@ class Patchscope(PatchscopeBase):
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
         logger.info("Running pairs.")
-        outputs = []
         for i, j in tqdm(zip(source_layers, target_layers)):
             self.source.layer = i
             self.target.layer = j
@@ -291,6 +286,4 @@ class Patchscope(PatchscopeBase):
             logger.info("Saving last token outputs")
             # Output sizes are too large. For now, we only need the last character of the first output.
             logger.info(self._target_outputs[0].shape)
-            outputs.append(self._target_outputs[0][-1, :])
-            # self.show_size(outputs)
-        return outputs
+            yield self._target_outputs[0][-1, :]

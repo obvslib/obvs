@@ -84,10 +84,10 @@ class TokenIdentity(Patchscope):
         if target_layers:
             self.target_layers = target_layers
             # If there are two sets of layers, run over all of them in nested for loops
-            self.outputs = self.patchscope.over(self.source_layers, self.target_layers)
+            self.outputs = list(self.patchscope.over(self.source_layers, self.target_layers))
         else:
             # Otherwise, run over the same set of layers
-            self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
+            self.outputs = list(self.patchscope.over_pairs(self.source_layers, self.source_layers))
 
         return self
 
@@ -115,6 +115,60 @@ class TokenIdentity(Patchscope):
             for i, source_layer in enumerate(self.source_layers):
                 for j, target_layer in enumerate(self.target_layers):
                     probs = torch.softmax(self.outputs[i][j], dim=-1)
+                    self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+        elif hasattr(self, "source_layers"):
+            for i, output in enumerate(self.outputs):
+                probs = torch.softmax(output, dim=-1)
+                self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+        logger.info("Done")
+
+        if self.filename:
+            np.save(self.filename.with_suffix(".npy"), self.surprisal)
+
+        return self
+
+    def run_and_compute(
+            self,
+            source_layers: Optional[Sequence[int]] = None,
+            target_layers: Optional[Sequence[int]] = None,
+            word: Optional[str] = None
+    ):
+        """
+        For larger models, saving the outputs for every layer eats up the GPU memoery. This method
+        runs the patchscope and computes the surprisal in one go, saving memory.
+        """
+        self.source_layers = source_layers or list(range(self.patchscope.n_layers_source))
+        if target_layers:
+            self.target_layers = target_layers
+            # If there are two sets of layers, run over all of them in nested for loops
+            self.outputs = self.patchscope.over(self.source_layers, self.target_layers)
+        else:
+            # Otherwise, run over the same set of layers
+            self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
+
+        if isinstance(word, str):
+            if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
+                # Note to devs: we probably want some tokenizer helpers for this kind of thing
+                logger.warning("Target should probably start with a space!")
+            target = self.patchscope.tokenizer.encode(word)
+        else:
+            # Otherwise, we find the next token from the source output:
+            target = self.patchscope.source_output[-1].argmax(dim=-1).item()
+
+        # Jesus, this fixed the damn bug. Well, better than nothing.
+        import gc
+        gc.collect()
+
+        logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
+        elif hasattr(self, "source_layers"):
+            self.surprisal = np.zeros(len(self.source_layers))
+
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            for i, source_layer in enumerate(self.source_layers):
+                for j, target_layer in enumerate(self.target_layers):
+                    probs = torch.softmax(next(self.outputs), dim=-1)
                     self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
         elif hasattr(self, "source_layers"):
             for i, output in enumerate(self.outputs):

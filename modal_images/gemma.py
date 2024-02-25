@@ -31,6 +31,7 @@ image = (
         "nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.11"
     )
     .apt_install("git")
+    .apt_install("curl")
     .pip_install(
         "git+https://github.com/fergusfettes/obvs.git@modal",
         "hf_transfer"
@@ -43,7 +44,7 @@ image = (
 )
 
 
-stub = Stub(image=image, name="gptj")
+stub = Stub(image=image, name="gemma")
 
 
 @stub.local_entrypoint()

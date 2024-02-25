@@ -1,12 +1,11 @@
+from pathlib import Path
+
+from obvs.vis import create_heatmap, plot_surprisal
+
 from modal import Stub, gpu, method, Secret
 from modal_images.gemma import image as gemma_image
 from modal_images.mistral import image as mistral_image
 
-from datasets import load_dataset
-from obvs.vis import create_heatmap, plot_surprisal
-
-dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
-shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
 
 images = {
     "gemma2": gemma_image,
@@ -23,15 +22,19 @@ model_names = {
     "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
     "gptj": "EleutherAI/gpt-j-6B",
-    "gemma": "google/gemma-2b"
+    "gemma2": "google/gemma-2b",
+    "gemma7": "google/gemma-7b"
 }
 
 
-stub = Stub(image=mistral_image, name="token_identity", secrets=[Secret.from_name("my-huggingface-secret")])
+stub = Stub(image=gemma_image, name="token_identity", secrets=[Secret.from_name("my-huggingface-secret")])
 
 
 @stub.cls(
-    gpu=gpu.A100(memory=40, count=1),
+    # gpu=gpu.A100(memory=40, count=1),
+    gpu=gpu.A10G(count=1),   # 24 GB
+    # gpu=gpu.T4(count=1),   # 16 GB
+    # cpu=1,
     timeout=60 * 30,
     container_idle_timeout=60 * 5,
 )
@@ -45,7 +48,6 @@ class Runner:
         if not hasattr(self, "ti"):
             print("Setting up TokenIdentity")
             self.setup_ti(model_name)
-        self.ti.filename = f"{'full' if full else ''}token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
         self.ti.patchscope.source.prompt = prompt
         source_layers = range(self.ti.patchscope.n_layers_source)
         target_layers = range(self.ti.patchscope.n_layers_target)
@@ -58,6 +60,14 @@ class Runner:
 
 @stub.local_entrypoint()
 def main(model_name, n_samples=5, full=False):
+    n_samples = int(n_samples)
+    full = bool(full)
+    from datasets import load_dataset
+    import os
+    token = os.environ["HUGGINGFACE_TOKEN"].strip()
+    dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True, token=token)
+    shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
+
     samples = []
     for example in shuffled_dataset.take(n_samples):
         samples.append(example['text'])
@@ -71,25 +81,31 @@ def main(model_name, n_samples=5, full=False):
     # Strip the spaces
     samples = [sample.strip() for sample in samples]
 
+    filename = Path(f"{model_name}_surprisal_{n_samples}_full").expanduser()
+
     surprisals = []
     runner = Runner()
     for prompt in samples:
         try:
-            surprisal, layers = runner.run.remote(model_names[model_name], prompt)
+            surprisal, layers = runner.run.remote(model_names[model_name], prompt, full)
             surprisals.append(surprisal)
             if full:
-                create_heatmap(
+                fig = create_heatmap(
                     layers,
                     layers,
                     surprisal,
                     title=f"{model_name} Surprisal of the first 1000 characters of a random sample from the OSCAR corpus"
-                ).show()
+                )
+                fig.show()
+                fig.write_html(filename.with_suffix(".html"))
             else:
-                plot_surprisal(
+                fig = plot_surprisal(
                     layers,
                     surprisal,
                     title=f"{model_name} Surprisal of the first 1000 characters of a random sample from the OSCAR corpus"
-                ).show()
+                )
+                fig.show()
+                fig.write_html(filename.with_suffix(".html"))
         except Exception as e:
             print(e)
             break
@@ -102,14 +118,23 @@ def main(model_name, n_samples=5, full=False):
         mean_surprisal = np.mean(surprisals, axis=0)
         std_surprisal = np.std(surprisals, axis=0)
 
-        fig = plot_surprisal(ti.source_layers, mean_surprisal, std_surprisal, f"{model_name} Surprisal of the first 1000 characters of {n} random samples from the OSCAR corpus")
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
+        fig = plot_surprisal(
+            layers,
+            mean_surprisal,
+            std_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus")
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{n_samples}_samples.html")
         fig.show()
 
     elif len(surprisals[0].shape) == 2:
         # Its a set of layers for each token, meaning a heatmap. We dont botther with the std
         mean_surprisal = np.mean(surprisals, axis=0)
 
-        fig = create_heatmap(ti.source_layers, ti.target_layers, mean_surprisal, f"{model_name} Surprisal of the first 1000 characters of {n} random samples from the OSCAR corpus")
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
+        fig = create_heatmap(
+            layers,
+            layers,
+            mean_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+        )
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{n_samples}_samples.html")
         fig.show()

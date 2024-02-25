@@ -54,7 +54,12 @@ def main(model_name, n_samples=5, full=False):
         mean_surprisal = np.mean(surprisals, axis=0)
         std_surprisal = np.std(surprisals, axis=0)
 
-        fig = plot_surprisal(ti.source_layers, mean_surprisal, std_surprisal, f"{model_name} Surprisal of the first 1000 characters of {n} random samples from the OSCAR corpus")
+        fig = plot_surprisal(
+            ti.source_layers,
+            mean_surprisal,
+            std_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+        )
         fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
         fig.show()
 
@@ -62,7 +67,12 @@ def main(model_name, n_samples=5, full=False):
         # Its a set of layers for each token, meaning a heatmap. We dont botther with the std
         mean_surprisal = np.mean(surprisals, axis=0)
 
-        fig = create_heatmap(ti.source_layers, ti.target_layers, mean_surprisal, f"{model_name} Surprisal of the first 1000 characters of {n} random samples from the OSCAR corpus")
+        fig = create_heatmap(
+            ti.source_layers,
+            ti.target_layers,
+            mean_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+        )
         fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
         fig.show()
 
