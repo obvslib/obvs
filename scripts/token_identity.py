@@ -1,21 +1,15 @@
-from __future__ import annotations
+from obvs.lenses import TokenIdentity
 
-import time
+from datasets import load_dataset
 
-import numpy as np
-import torch
-import typer
-from tqdm import tqdm
-from pathlib import Path
+dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
+shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
 
-from obvspython.logging import logger
-from obvspython.patchscope import Patchscope, SourceContext, TargetContext
-from obvspython.vis import create_heatmap, plot_surprisal
-
-app = typer.Typer()
+samples = []
+for example in shuffled_dataset.take(20):
+    samples.append(example['text'])
 
 
-# Define the model names for LLaMA-2, Mistral, and GPT-2
 model_names = {
     "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
     "llama": "meta-llama/Llama-2-13b-hf",
@@ -27,112 +21,46 @@ model_names = {
 }
 
 
-def run_over_all_layers(patchscope, target_tokens, values):
-    source_layers = list(range(patchscope.n_layers))
-    target_layers = list(range(patchscope.n_layers))
-    iterations = len(source_layers) * len(target_layers)
+# Trim the samples to the first 300 characters
+samples = [sample[:1000] for sample in samples]
 
-    # with tqdm(total=iterations) as pbar:
-    #     outputs = patchscope.over_pairs(source_layers, target_layers)
-    #     pbar.update(1)
+# Make sure it ends on a space
+samples = [sample[:sample.rfind(' ')] for sample in samples]
 
-    with tqdm(total=iterations) as pbar:
-        outputs = patchscope.over(source_layers, target_layers)
-        pbar.update(1)
+# Strip the spaces
+samples = [sample.strip() for sample in samples]
 
-    logger.info("Computing surprisal")
-    target_output = 0
+surprisals = []
+ti = TokenIdentity("", model_names["mistral"])
+for prompt in samples:
+    ti.patchscope.source.prompt = prompt
+    ti.run().compute_surprisal().visualize()
+    surprisals.append(ti.surprisal)
 
-    # for i in source_layers:
-    #     # Get the output of the run
-    #     probs = torch.softmax(outputs[i][target_output], dim=-1)
-    #     values[i] = patchscope.compute_surprisal(probs[-1], target_tokens)
+# Average the surprisals, calculate the standard deviation and plot with plotly
+import numpy as np
+import plotly.graph_objects as go
 
-    for i in source_layers:
-        for j in target_layers:
-            # Get the output of the run
-            probs = torch.softmax(outputs[i][j][target_output].value, dim=-1)
-            values[i, j] = patchscope.compute_surprisal(probs[-1], target_tokens)
-    logger.info("Done")
+mean_surprisal = np.mean(surprisals, axis=0)
+std_surprisal = np.std(surprisals, axis=0)
 
-    return source_layers, target_layers, values, outputs
-
-
-def upate_saved_values(values):
-    # Save the values to a file
-    np.save("scripts/values.npy", values)
-
-
-@app.command()
-def main(
-    word: str = typer.Argument("boat", help="The expected next token."),
-    model: str = "gpt2",
-    prompt: str = typer.Option(
-        "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
-        help="Source Prompt",
+fig = go.Figure(
+    data=go.Scatter(
+        x=ti.layers,
+        y=mean_surprisal,
+        mode="lines+markers",
+        error_y=dict(
+            type='data',
+            array=std_surprisal,
+            visible=True,
+        ),
     ),
-):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Generating definition for word: {word} using model: {model}")
-    if model in model_names:
-        model = model_names[model]
+)
 
-    model_name = model.replace("/", "-")
-    filename = f"{model_name}_{word}"
+fig.update_layout(
+    title="Surprisal of the first 1000 characters of 10 random samples from the OSCAR corpus",
+    xaxis_title="Layer",
+    yaxis_title="Surprisal",
+)
 
-    # prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
-    # Setup source and target context with the simplest configuration
-    source_context = SourceContext(
-        prompt=prompt,  # Example input text
-        model_name=model,  # Model name
-        position=-1,
-        device=device,
-    )
-
-    target_context = TargetContext.from_source(source_context)
-    target_context.prompt = (
-        "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
-    )
-    target_context.max_new_tokens = 1
-    patchscope = Patchscope(source=source_context, target=target_context)
-
-    try:
-        patchscope.source.position, target_tokens = patchscope.source_position_tokens(word)
-        patchscope.target.position, _ = patchscope.target_position_tokens("X")
-
-        assert (
-            patchscope.source_words[patchscope.source.position].strip() == word
-        ), patchscope.source_words[patchscope.source.position]
-        assert (
-            patchscope.target_words[patchscope.target.position].strip() == "X"
-        ), patchscope.target_words[patchscope.target.position]
-
-    except ValueError:
-        target_tokens = patchscope.tokenizer.encode(" boat", add_special_tokens=False)
-        patchscope.source.position = -1
-        patchscope.target.position = -1
-
-    if Path(f"scripts/{filename}.npy").exists():
-        values = np.load(f"scripts/{filename}.npy")
-    else:
-        values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
-
-    start = time.time()
-    source_layers, target_layers, values, outputs = run_over_all_layers(patchscope, target_tokens, values)
-    print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
-
-    # Save the values to a file
-    np.save(f"scripts/{filename}.npy", values)
-
-    # fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
-    # fig.write_image(f"scripts/{filename}.png")
-    # fig.show()
-
-    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
-    # Save as png
-    fig.write_image(f"scripts/{filename}.png")
-    fig.show()
-
-
-if __name__ == "__main__":
-    app()
+fig.show()
