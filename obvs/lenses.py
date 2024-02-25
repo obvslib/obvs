@@ -94,8 +94,8 @@ class TokenIdentity(Patchscope):
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
         self.surprisal = np.zeros(len(self.layers))
         for i, output in enumerate(self.outputs):
-            probs = torch.softmax(output[0], dim=-1)
-            self.surprisal[i] = self.patchscope.compute_surprisal(probs[-1], target)
+            probs = torch.softmax(output, dim=-1)
+            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
         logger.info("Done")
 
         if self.filename:
