@@ -37,7 +37,7 @@ stub = Stub(image=gemma_image, name="token_identity")
 
 
 @stub.cls(
-    gpu=gpu.A100(memory=80, count=1),
+    gpu=gpu.A100(memory=40, count=1),
     timeout=60 * 60 * 2,
     container_idle_timeout=60 * 5,
 )

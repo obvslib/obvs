@@ -46,7 +46,6 @@ class TokenIdentity(Patchscope):
         else:
             self.filename = None
         self.model_name = model_name
-        self.prompt = source_prompt
 
         # Source finds the device automatically, but we can override it
         source_context = SourceContext(prompt=source_prompt, model_name=model_name, position=-1)
@@ -63,6 +62,14 @@ class TokenIdentity(Patchscope):
         # so it has to be done after the patchscope is created
         if source_phrase:
             self.patchscope.source.position = self.patchscope.find_in_source(source_phrase)
+
+    @property
+    def prompt(self):
+        return self.patchscope.source.prompt
+
+    @prompt.setter
+    def prompt(self, value):
+        self.patchscope.source.prompt = value
 
     def run(self, layers: Optional[Sequence[int]] = None):
         self.layers = layers or list(range(self.patchscope.n_layers))
@@ -96,7 +103,7 @@ class TokenIdentity(Patchscope):
 
         return self
 
-    def visualize(self):
+    def visualize(self, show: bool = True):
         if self.surprisal is None:
             raise ValueError("You need to compute the surprisal values first.")
 
@@ -109,7 +116,9 @@ class TokenIdentity(Patchscope):
 
         if self.filename:
             self.fig.write_image(self.filename.with_suffix(".png"))
-        self.fig.show()
+        if show:
+            self.fig.show()
+        return self
 
 
 class ExtendedTokenIdentity(Patchscope):
