@@ -1,4 +1,5 @@
 from obvs.lenses import TokenIdentity
+from obvs.vis import create_heatmap, plot_surprisal
 
 from datasets import load_dataset
 
@@ -6,7 +7,7 @@ dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming
 shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
 
 samples = []
-for example in shuffled_dataset.take(20):
+for example in shuffled_dataset.take(5):
     samples.append(example['text'])
 
 
@@ -31,36 +32,33 @@ samples = [sample[:sample.rfind(' ')] for sample in samples]
 samples = [sample.strip() for sample in samples]
 
 surprisals = []
-ti = TokenIdentity("", model_names["mistral"], filename="token_identity_mistral")
+model_name = "gpt2"
+ti = TokenIdentity("", model_names[model_name])
 for prompt in samples:
+    ti.filename = f"token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
     ti.patchscope.source.prompt = prompt
-    ti.run().compute_surprisal().visualize()
+    ti.run(
+        range(ti.patchscope.n_layers_source),
+        # range(ti.patchscope.n_layers_target)
+    ).compute_surprisal().visualize()
     surprisals.append(ti.surprisal)
 
 # Average the surprisals, calculate the standard deviation and plot with plotly
 import numpy as np
-import plotly.graph_objects as go
 
-mean_surprisal = np.mean(surprisals, axis=0)
-std_surprisal = np.std(surprisals, axis=0)
+if len(surprisals[0].shape) == 1:
+    # Its a single set of layers
+    mean_surprisal = np.mean(surprisals, axis=0)
+    std_surprisal = np.std(surprisals, axis=0)
 
-fig = go.Figure(
-    data=go.Scatter(
-        x=ti.layers,
-        y=mean_surprisal,
-        mode="lines+markers",
-        error_y=dict(
-            type='data',
-            array=std_surprisal,
-            visible=True,
-        ),
-    ),
-)
+    fig = plot_surprisal(ti.source_layers, mean_surprisal, std_surprisal, "Surprisal of the first 1000 characters of 10 random samples from the OSCAR corpus")
+    fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
+    fig.show()
 
-fig.update_layout(
-    title="Surprisal of the first 1000 characters of 10 random samples from the OSCAR corpus",
-    xaxis_title="Layer",
-    yaxis_title="Surprisal",
-)
+elif len(surprisals[0].shape) == 2:
+    # Its a set of layers for each token, meaning a heatmap. We dont botther with the std
+    mean_surprisal = np.mean(surprisals, axis=0)
 
-fig.show()
+    fig = create_heatmap(ti.source_layers, ti.target_layers, mean_surprisal, "Surprisal of the first 1000 characters of 10 random samples from the OSCAR corpus")
+    fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples.html")
+    fig.show()

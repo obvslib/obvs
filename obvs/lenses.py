@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from obvs.patchscope import SourceContext, TargetContext, Patchscope
-from obvs.vis import plot_surprisal
+from obvs.vis import plot_surprisal, create_heatmap
 from obvs.logging import logger
 
 import numpy as np
@@ -42,9 +42,9 @@ class TokenIdentity(Patchscope):
         logger.info(f"Starting token identity patchscope with source: {source_prompt} and target: {target_prompt}")
         if filename:
             logger.info(f"Saving to file: {filename}")
-            self.filename = Path(filename).expanduser()
+            self._filename = Path(filename).expanduser()
         else:
-            self.filename = None
+            self._filename = None
         self.model_name = model_name
 
         # Source finds the device automatically, but we can override it
@@ -71,9 +71,23 @@ class TokenIdentity(Patchscope):
     def prompt(self, value):
         self.patchscope.source.prompt = value
 
-    def run(self, layers: Optional[Sequence[int]] = None):
-        self.layers = layers or list(range(self.patchscope.n_layers))
-        self.outputs = self.patchscope.over_pairs(self.layers, self.layers)
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, value):
+        self._filename = Path(value).expanduser()
+
+    def run(self, source_layers: Optional[Sequence[int]] = None, target_layers: Optional[Sequence[int]] = None):
+        self.source_layers = source_layers or list(range(self.patchscope.n_layers_source))
+        if target_layers:
+            self.target_layers = target_layers
+            # If there are two sets of layers, run over all of them in nested for loops
+            self.outputs = self.patchscope.over(self.source_layers, self.target_layers)
+        else:
+            # Otherwise, run over the same set of layers
+            self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
 
         return self
 
@@ -92,10 +106,20 @@ class TokenIdentity(Patchscope):
         gc.collect()
 
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
-        self.surprisal = np.zeros(len(self.layers))
-        for i, output in enumerate(self.outputs):
-            probs = torch.softmax(output, dim=-1)
-            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
+        elif hasattr(self, "source_layers"):
+            self.surprisal = np.zeros(len(self.source_layers))
+
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            for i, source_layer in enumerate(self.source_layers):
+                for j, target_layer in enumerate(self.target_layers):
+                    probs = torch.softmax(self.outputs[i][j], dim=-1)
+                    self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+        elif hasattr(self, "source_layers"):
+            for i, output in enumerate(self.outputs):
+                probs = torch.softmax(output, dim=-1)
+                self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
         logger.info("Done")
 
         if self.filename:
@@ -104,15 +128,23 @@ class TokenIdentity(Patchscope):
         return self
 
     def visualize(self, show: bool = True):
-        if self.surprisal is None:
+        if not hasattr(self, "surprisal"):
             raise ValueError("You need to compute the surprisal values first.")
 
         # Visualize the surprisal values
-        self.fig = plot_surprisal(
-            self.layers,
-            self.surprisal,
-            title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
-        )
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.fig = create_heatmap(
+                self.source_layers,
+                self.target_layers,
+                self.surprisal,
+                title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
+            )
+        elif hasattr(self, "source_layers"):
+            self.fig = plot_surprisal(
+                self.source_layers,
+                self.surprisal,
+                title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
+            )
 
         if self.filename:
             self.fig.write_image(self.filename.with_suffix(".png"))

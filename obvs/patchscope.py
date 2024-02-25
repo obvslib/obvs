@@ -249,8 +249,9 @@ class Patchscope(PatchscopeBase):
                 logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
                 self.run()
                 logger.info(self.full_output())
-                logger.info(f"Saving {len(self._target_outputs)} outputs")
-                inner_outputs.append(self._target_outputs)
+                logger.info("Saving last token outputs")
+                # Output sizes are too large. For now, we only need the last character of the first output.
+                inner_outputs.append(self._target_outputs[0][-1, :])
             outputs.append(inner_outputs)
         return outputs
 
@@ -287,7 +288,7 @@ class Patchscope(PatchscopeBase):
             logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
             self.run()
             logger.info(self.full_output())
-            logger.info(f"Saving {len(self._target_outputs)} outputs")
+            logger.info("Saving last token outputs")
             # Output sizes are too large. For now, we only need the last character of the first output.
             logger.info(self._target_outputs[0].shape)
             outputs.append(self._target_outputs[0][-1, :])

@@ -20,6 +20,11 @@ def create_heatmap(
     Returns:
         go.Figure: The heatmap figure.
     """
+    if not isinstance(source_layers, list):
+        source_layers = list(source_layers)
+    if not isinstance(target_layers, list):
+        target_layers = list(target_layers)
+
     # Create the heatmap
     fig = go.Figure(
         data=go.Heatmap(
@@ -52,6 +57,9 @@ def plot_surprisal(layers, values, std=None, title="Surprisal") -> go.Figure:
     Returns:
         go.Figure: The bar plot figure.
     """
+    if not isinstance(layers, list):
+        layers = list(layers)
+
     # Create the scatter plot
     fig = go.Figure(
         data=go.Scatter(
