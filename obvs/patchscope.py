@@ -259,6 +259,7 @@ class Patchscope(PatchscopeBase):
         logger.info(f"Outputs size: {len(outputs)}")
         for i, output in enumerate(outputs):
             logger.info(f"Output {i} size: {output.element_size() * output.nelement()}")
+        logger.info(f"Total size: {sum(output.element_size() * output.nelement() for output in outputs)}")
 
     def over_pairs(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
         """
@@ -269,6 +270,7 @@ class Patchscope(PatchscopeBase):
         """
         outputs = []
         for i, j in tqdm(zip(source_layers, target_layers)):
+            self.show_size(outputs)
             self.source.layer = i
             self.target.layer = j
             logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
