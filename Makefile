@@ -3,3 +3,8 @@ reqs:
 
 publish:
 	poetry publish --build -u __token__ -p ${PYPI_TOKEN}
+
+install:
+	pip install -e .
+	pip install hf_transfer
+	apt install neovim
