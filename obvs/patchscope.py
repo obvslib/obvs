@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from tqdm import tqdm
 
 import torch
 from nnsight import LanguageModel
@@ -52,7 +53,7 @@ class SourceContext:
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
-    device: str = "cuda:0"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __repr__(self) -> str:
         return (
@@ -189,6 +190,7 @@ class Patchscope(PatchscopeBase):
         with self.target_model.generate(
             self.target.prompt,
             remote=self.REMOTE,
+            use_cache=False,
             **self.generation_kwargs,
         ) as _:
             self.manipulate_target()
@@ -212,3 +214,21 @@ class Patchscope(PatchscopeBase):
         self.source_forward_pass()
         self.map()
         self.target_forward_pass()
+
+    def over_pairs(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
+        """
+        Run the patchscope over the specified set of layers in pairs
+        :param source_layers: A list of layer indices or a range of layer indices.
+        :param target_layers: A list of layer indices or a range of layer indices.
+        :return: A source_layers x target_layers x max_new_tokens list of outputs.
+        """
+        outputs = []
+        for i, j in tqdm(zip(source_layers, target_layers)):
+            self.source.layer = i
+            self.target.layer = j
+            logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
+            self.run()
+            logger.info(self.full_output())
+            logger.info(f"Saving {len(self._target_outputs)} outputs")
+            outputs.append(self._target_outputs)
+        return outputs
