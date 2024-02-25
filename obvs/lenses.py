@@ -80,8 +80,10 @@ class TokenIdentity(Patchscope):
             # Otherwise, we find the next token from the source output:
             target = self.patchscope.source_output[-1].argmax(dim=-1).item()
 
-        import time
-        time.sleep(0.1)
+        # Jesus, this fixed the damn bug. Well, better than nothing.
+        import gc
+        gc.collect()
+
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
         self.surprisal = np.zeros(len(self.layers))
         for i, output in enumerate(self.outputs):
