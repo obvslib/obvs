@@ -254,23 +254,23 @@ class Patchscope(PatchscopeBase):
             outputs.append(inner_outputs)
         return outputs
 
-    def show_size(self, outputs: list[torch.Tensor]) -> None:
-        """
-        Show the size of the outputs. I think they are filling up the GPU
-        Outputs are a list of torch.Tensor. So we can check the size of the list and the size of each tensor.
-        """
-        logger.info(f"Outputs size: {len(outputs)}")
-        # for i, row in enumerate(outputs):
-        for j, output in enumerate(outputs):
-            raw_size = output.element_size() * output.nelement()
-            mb = raw_size / 1024 ** 2
-            logger.info(f"Output {j} size: {mb:.2f} MB")
-        # total = sum([output.element_size() * output.nelement() for row in outputs for output in row])
-        total = sum([output.element_size() * output.nelement() for output in outputs])
-        total = total / 1024 ** 2
-        logger.info(f"Total size: {total:.2f} MB")
-        togal_gb = total / 1024
-        logger.info(f"Total size: {togal_gb:.2f} GB")
+    # def show_size(self, outputs: list[torch.Tensor]) -> None:
+    #     """
+    #     Show the size of the outputs. I think they are filling up the GPU
+    #     Outputs are a list of torch.Tensor. So we can check the size of the list and the size of each tensor.
+    #     """
+    #     logger.info(f"Outputs size: {len(outputs)}")
+    #     # for i, row in enumerate(outputs):
+    #     for j, output in enumerate(outputs):
+    #         raw_size = output.element_size() * output.nelement()
+    #         mb = raw_size / 1024 ** 2
+    #         logger.info(f"Output {j} size: {mb:.2f} MB")
+    #     # total = sum([output.element_size() * output.nelement() for row in outputs for output in row])
+    #     total = sum([output.element_size() * output.nelement() for output in outputs])
+    #     total = total / 1024 ** 2
+    #     logger.info(f"Total size: {total:.2f} MB")
+    #     togal_gb = total / 1024
+    #     logger.info(f"Total size: {togal_gb:.2f} GB")
 
     def over_pairs(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
         """
@@ -291,5 +291,5 @@ class Patchscope(PatchscopeBase):
             # Output sizes are too large. For now, we only need the last character of the first output.
             logger.info(self._target_outputs[0].shape)
             outputs.append(self._target_outputs[0][-1, :])
-            self.show_size(outputs)
+            # self.show_size(outputs)
         return outputs
