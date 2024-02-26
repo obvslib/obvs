@@ -4,7 +4,7 @@ from obvs.vis import create_heatmap, plot_surprisal
 from datasets import load_dataset
 
 dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
-shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
+shuffled_dataset = dataset.shuffle(seed=42, buffer_size=50)
 
 model_names = {
     "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",

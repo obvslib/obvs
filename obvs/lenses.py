@@ -12,6 +12,7 @@ from obvs.logging import logger
 
 import numpy as np
 import torch
+import gc
 
 
 class TokenIdentity(Patchscope):
@@ -92,38 +93,27 @@ class TokenIdentity(Patchscope):
         return self
 
     def compute_surprisal(self, word: Optional[str] = None):
-        if isinstance(word, str):
-            if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
-                # Note to devs: we probably want some tokenizer helpers for this kind of thing
-                logger.warning("Target should probably start with a space!")
-            target = self.patchscope.tokenizer.encode(word)
-        else:
-            # Otherwise, we find the next token from the source output:
-            target = self.patchscope.source_output[-1].argmax(dim=-1).item()
-
-        # Jesus, this fixed the damn bug. Well, better than nothing.
-        import gc
-        gc.collect()
+        target = self._target_word(word)
+        self.prepare_data_array()
 
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
-        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
-            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
-        elif hasattr(self, "source_layers"):
-            self.surprisal = np.zeros(len(self.source_layers))
+
+        gc.collect()
 
         if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
             for i, source_layer in enumerate(self.source_layers):
                 for j, target_layer in enumerate(self.target_layers):
-                    probs = torch.softmax(self.outputs[i][j], dim=-1)
+                    probs = torch.softmax(self.outputs[i * len(self.target_layers) + j], dim=-1)
                     self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+                    self.precision_at_1[i, j] = self.patchscope.compute_precision_at_1(probs, target)
         elif hasattr(self, "source_layers"):
             for i, output in enumerate(self.outputs):
                 probs = torch.softmax(output, dim=-1)
                 self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+                self.precision_at_1[i] = self.patchscope.compute_precision_at_1(probs, target)
         logger.info("Done")
 
-        if self.filename:
-            np.save(self.filename.with_suffix(".npy"), self.surprisal)
+        self.save_to_file()
 
         return self
 
@@ -146,10 +136,7 @@ class TokenIdentity(Patchscope):
             # Otherwise, run over the same set of layers
             self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
 
-        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
-            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
-        elif hasattr(self, "source_layers"):
-            self.surprisal = np.zeros(len(self.source_layers))
+        self.prepare_data_array()
 
         # Get the first output to initialize the state of the patchscope
         if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
@@ -162,7 +149,25 @@ class TokenIdentity(Patchscope):
 
         return self
 
-    def nextloop(self, output, word, i, j):
+    def nextloop(self, output, word, i=None, j=None):
+        target = self._target_word(word)
+
+        logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
+
+        gc.collect()
+
+        probs = torch.softmax(output, dim=-1)
+        if i is not None and j is not None:
+            self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+            self.precision_at_1[i, j] = self.patchscope.compute_precision_at_1(probs, target)
+        else:
+            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+            self.precision_at_1[i] = self.patchscope.compute_precision_at_1(probs, target)
+        logger.info("Done")
+
+        self.save_to_file()
+
+    def _target_word(self, word):
         if isinstance(word, str):
             if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
                 # Note to devs: we probably want some tokenizer helpers for this kind of thing
@@ -171,22 +176,22 @@ class TokenIdentity(Patchscope):
         else:
             # Otherwise, we find the next token from the source output:
             target = self.patchscope.source_output[-1].argmax(dim=-1).item()
+        return target
 
-        # Jesus, this fixed the damn bug. Well, better than nothing.
-        import gc
-        gc.collect()
+    def prepare_data_array(self):
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
+            self.precision_at_1 = np.zeros((len(self.source_layers), len(self.target_layers)))
+        elif hasattr(self, "source_layers"):
+            self.surprisal = np.zeros(len(self.source_layers))
+            self.precision_at_1 = np.zeros(len(self.source_layers))
 
-        logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
-
-        probs = torch.softmax(output, dim=-1)
-        if i and j:
-            self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
-        else:
-            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
-        logger.info("Done")
-
+    def save_to_file(self):
         if self.filename:
-            np.save(self.filename.with_suffix(".npy"), self.surprisal)
+            surprisal_file = Path(self.filename.stem + "_surprisal").with_suffix(".npy")
+            np.save(surprisal_file, self.surprisal)
+            precision_file = Path(self.filename.stem + "_precision_at_1").with_suffix(".npy")
+            np.save(precision_file, self.precision_at_1)
 
     def visualize(self, show: bool = True):
         if not hasattr(self, "surprisal"):

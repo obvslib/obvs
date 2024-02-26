@@ -4,7 +4,7 @@ from obvs.vis import create_heatmap, plot_surprisal
 from datasets import load_dataset
 
 dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
-shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
+shuffled_dataset = dataset.shuffle(seed=42, buffer_size=50)
 
 model_names = {
     "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
@@ -19,27 +19,67 @@ model_names = {
 
 prompts = [
     # "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is",
-    "bat is god; 135 is 5; hello is shoe; black is not; six is old; x is",
-    "bat ➡️ bat; 135 ➡️ 135; hello ➡️ hello; black ➡️ black; shoe ➡️ shoe; x ➡️",
-    "bat is bat, 135 is 135, hello is hello, black is black, shoe is shoe, x is",
-    "bat, shoe, 135, hello, black, fire, tree, z, 1, new, true, x",
-    "x is",
-    "it is",
-    "the",
-    "hello! here is a something I'm trying to decode, can you help me? x",
-    "hello! here is a something I'm trying to decode, can you help me? x is",
-    "hello! here is a something I'm trying to decode, it is normally written like so: x",
-    "hello! here is a something I'm trying to understand, it is normally written like so: x",
-    "Hello! Here is a something I'm trying to understand, it is normally written like so: x",
-    "Hello! Here is a something I'm trying to understand, it is normally written like so: 'x",
-    "I found a few files on an old hard drive. Here are some fragments: x",
-    "I found a few files on an old hard drive. Here are some fragments: x is",
-    "I found a few files on an old hard drive. Here are some fragments: 'x",
-    "Someone sent me this. Do you understand it? x",
-    "Someone sent me this. Do you understand it? x is",
-    "Someone sent me this. Do you understand it? 'x",
-    "Imaging someone saying such a random thing! (I'll tell you what they said: 'x",
-    "Imaging someone writing such a random thing! (I'll tell you what they said: 'x",
+    # "bat is god; 135 is 5; hello is shoe; black is not; six is old; x is",
+    # "bat ➡️ bat; 135 ➡️ 135; hello ➡️ hello; black ➡️ black; shoe ➡️ shoe; x ➡️",
+    # "bat is bat, 135 is 135, hello is hello, black is black, shoe is shoe, x is",
+    # "bat, shoe, 135, hello, black, fire, tree, z, 1, new, true, x",
+    # "x is",
+    # "it is",
+    # "the",
+    # "hello! here is a something I'm trying to decode, can you help me? x",
+    # "hello! here is a something I'm trying to decode, can you help me? x is",
+    # "hello! here is a something I'm trying to decode, it is normally written like so: x",
+    # "hello! here is a something I'm trying to understand, it is normally written like so: x",
+    # "Hello! Here is a something I'm trying to understand, it is normally written like so: x",
+    # "Hello! Here is a something I'm trying to understand, it is normally written like so: 'x",
+    # "I found a few files on an old hard drive. Here are some fragments: x",
+    # "I found a few files on an old hard drive. Here are some fragments: x is",
+    # "I found a few files on an old hard drive. Here are some fragments: 'x",
+    # "Someone sent me this. Do you understand it? x",
+    # "Someone sent me this. Do you understand it? x is",
+    # "Someone sent me this. Do you understand it? 'x",
+    # "Imaging someone saying such a random thing! (I'll tell you what they said: 'x",
+    # "Imaging someone writing such a random thing! (I'll tell you what they said: 'x",
+    "bat shoe 135 hello black fire tree z 1 new true x",
+    "I love you I love you I love you x",
+    "I hate you I hate you I hate you x",
+    "love love love love love love love love x",
+    "hate hate hate hate hate hate hate hate x",
+    "123 453 1 500 1022 12 0 x",
+    "? ! , @ ? ! . x",
+    "pretty, slow, fast, tall, short, big, small, heavy, light, dark, bright, x",
+    "elephant, hat, cat, degree, raindrop, planet, x",
+    "run, walk, jump, sit, stand, sleep, eat, drink, x",
+    "he, she, it, they, we, you, I, x",
+    "., ,, ?, !, :, ;, ', x",
+    "This is so random! 'x"
+    "This is so random? 'x"
+    "What this? 'x"
+    "What? 'x"
+    "What!? 'x"
+    "What! 'x"
+]
+
+
+multiprompts = [
+    "Love: i love you 10, i like you 9, i hate you 1, i don't care 0, x _; "
+    "Hate: i love you 1, i like you 0, i hate you 10, i don't care 9, x _; "
+    "Indifference: i love you 0, i like you 1, i hate you 1, i don't care 10, x _; "
+    "Size: elephant 8, mouse 2, ant 1, whale 9, x _; "
+]
+
+
+multiprompts = [
+    # Adjectives
+    "pretty, slow, fast, tall, short, big, small, heavy, light, dark, bright, x; ",
+    # Nouns
+    "elephant, hat, cat, degree, raindrop, planet, x; ",
+    # Verbs
+    "run, walk, jump, sit, stand, sleep, eat, drink, x; ",
+    # Pronouns
+    "he, she, it, they, we, you, I, x; ",
+    # Punctuation
+    "., ,, ?, !, :, ;, ', x; ",
 ]
 
 
