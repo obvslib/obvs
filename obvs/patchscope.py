@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from tqdm import tqdm
+import gc
 
 import torch
 from nnsight import LanguageModel
@@ -211,10 +212,24 @@ class Patchscope(PatchscopeBase):
         """
         Run the patchscope
         """
-        self._target_outputs = []
+        self.clear()
         self.source_forward_pass()
         self.map()
         self.target_forward_pass()
+
+    def clear(self) -> None:
+        """
+        Clear the outputs and the cache
+        """
+        self._target_outputs = []
+        if hasattr(self, "source_output"):
+            del self.source_output
+        if hasattr(self, "_source_hidden_state"):
+            del self._source_hidden_state
+        if hasattr(self, "_mapped_hidden_state"):
+            del self._mapped_hidden_state
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def over(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
         """
@@ -224,19 +239,35 @@ class Patchscope(PatchscopeBase):
         :param target_layers: A list of layer indices or a range of layer indices.
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
-        outputs = []
+        logger.info("Running sets.")
         for i in source_layers:
             self.source.layer = i
-            inner_outputs = []
             for j in target_layers:
                 self.target.layer = j
                 logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
                 self.run()
                 logger.info(self.full_output())
-                logger.info(f"Saving {len(self._target_outputs)} outputs")
-                inner_outputs.append(self._target_outputs)
-            outputs.append(inner_outputs)
-        return outputs
+                logger.info("Saving last token outputs")
+                # Output sizes are too large. For now, we only need the last character of the first output.
+                yield self._target_outputs[0][-1, :]
+
+    # def show_size(self, outputs: list[torch.Tensor]) -> None:
+    #     """
+    #     Show the size of the outputs. I think they are filling up the GPU
+    #     Outputs are a list of torch.Tensor. So we can check the size of the list and the size of each tensor.
+    #     """
+    #     logger.info(f"Outputs size: {len(outputs)}")
+    #     # for i, row in enumerate(outputs):
+    #     for j, output in enumerate(outputs):
+    #         raw_size = output.element_size() * output.nelement()
+    #         mb = raw_size / 1024 ** 2
+    #         logger.info(f"Output {j} size: {mb:.2f} MB")
+    #     # total = sum([output.element_size() * output.nelement() for row in outputs for output in row])
+    #     total = sum([output.element_size() * output.nelement() for output in outputs])
+    #     total = total / 1024 ** 2
+    #     logger.info(f"Total size: {total:.2f} MB")
+    #     togal_gb = total / 1024
+    #     logger.info(f"Total size: {togal_gb:.2f} GB")
 
     def over_pairs(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
         """
@@ -245,13 +276,14 @@ class Patchscope(PatchscopeBase):
         :param target_layers: A list of layer indices or a range of layer indices.
         :return: A source_layers x target_layers x max_new_tokens list of outputs.
         """
-        outputs = []
+        logger.info("Running pairs.")
         for i, j in tqdm(zip(source_layers, target_layers)):
             self.source.layer = i
             self.target.layer = j
             logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
             self.run()
             logger.info(self.full_output())
-            logger.info(f"Saving {len(self._target_outputs)} outputs")
-            outputs.append(self._target_outputs)
-        return outputs
+            logger.info("Saving last token outputs")
+            # Output sizes are too large. For now, we only need the last character of the first output.
+            logger.info(self._target_outputs[0].shape)
+            yield self._target_outputs[0][-1, :]

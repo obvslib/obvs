@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from obvs.patchscope import SourceContext, TargetContext, Patchscope
-from obvs.vis import plot_surprisal
+from obvs.vis import plot_surprisal, create_heatmap
 from obvs.logging import logger
 
 import numpy as np
 import torch
+import gc
 
 
 class TokenIdentity(Patchscope):
@@ -42,11 +43,10 @@ class TokenIdentity(Patchscope):
         logger.info(f"Starting token identity patchscope with source: {source_prompt} and target: {target_prompt}")
         if filename:
             logger.info(f"Saving to file: {filename}")
-            self.filename = Path(filename).expanduser()
+            self._filename = Path(filename).expanduser()
         else:
-            self.filename = None
+            self._filename = None
         self.model_name = model_name
-        self.prompt = source_prompt
 
         # Source finds the device automatically, but we can override it
         source_context = SourceContext(prompt=source_prompt, model_name=model_name, position=-1)
@@ -64,13 +64,110 @@ class TokenIdentity(Patchscope):
         if source_phrase:
             self.patchscope.source.position = self.patchscope.find_in_source(source_phrase)
 
-    def run(self, layers: Optional[Sequence[int]] = None):
-        self.layers = layers or list(range(self.patchscope.n_layers))
-        self.outputs = self.patchscope.over_pairs(self.layers, self.layers)
+    @property
+    def prompt(self):
+        return self.patchscope.source.prompt
+
+    @prompt.setter
+    def prompt(self, value):
+        self.patchscope.source.prompt = value
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, value):
+        self._filename = Path(value).expanduser()
+
+    def run(self, source_layers: Optional[Sequence[int]] = None, target_layers: Optional[Sequence[int]] = None):
+        self.source_layers = source_layers or list(range(self.patchscope.n_layers_source))
+        if target_layers:
+            self.target_layers = target_layers
+            # If there are two sets of layers, run over all of them in nested for loops
+            self.outputs = list(self.patchscope.over(self.source_layers, self.target_layers))
+        else:
+            # Otherwise, run over the same set of layers
+            self.outputs = list(self.patchscope.over_pairs(self.source_layers, self.source_layers))
 
         return self
 
     def compute_surprisal(self, word: Optional[str] = None):
+        target = self._target_word(word)
+        self.prepare_data_array()
+
+        logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
+
+        gc.collect()
+
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            for i, source_layer in enumerate(self.source_layers):
+                for j, target_layer in enumerate(self.target_layers):
+                    probs = torch.softmax(self.outputs[i * len(self.target_layers) + j], dim=-1)
+                    self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+                    self.precision_at_1[i, j] = self.patchscope.compute_precision_at_1(probs, target)
+        elif hasattr(self, "source_layers"):
+            for i, output in enumerate(self.outputs):
+                probs = torch.softmax(output, dim=-1)
+                self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+                self.precision_at_1[i] = self.patchscope.compute_precision_at_1(probs, target)
+        logger.info("Done")
+
+        self.save_to_file()
+
+        return self
+
+    def run_and_compute(
+            self,
+            source_layers: Optional[Sequence[int]] = None,
+            target_layers: Optional[Sequence[int]] = None,
+            word: Optional[str] = None
+    ):
+        """
+        For larger models, saving the outputs for every layer eats up the GPU memoery. This method
+        runs the patchscope and computes the surprisal in one go, saving memory.
+        """
+        self.source_layers = source_layers or list(range(self.patchscope.n_layers_source))
+        if target_layers:
+            self.target_layers = target_layers
+            # If there are two sets of layers, run over all of them in nested for loops
+            self.outputs = self.patchscope.over(self.source_layers, self.target_layers)
+        else:
+            # Otherwise, run over the same set of layers
+            self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
+
+        self.prepare_data_array()
+
+        # Get the first output to initialize the state of the patchscope
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            for i, source_layer in enumerate(self.source_layers):
+                for j, target_layer in enumerate(self.target_layers):
+                    self.nextloop(next(self.outputs), word, i, j)
+        elif hasattr(self, "source_layers"):
+            for i, output in enumerate(self.outputs):
+                self.nextloop(next(self.outputs), word, i, None)
+
+        return self
+
+    def nextloop(self, output, word, i=None, j=None):
+        target = self._target_word(word)
+
+        logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
+
+        gc.collect()
+
+        probs = torch.softmax(output, dim=-1)
+        if i is not None and j is not None:
+            self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
+            self.precision_at_1[i, j] = self.patchscope.compute_precision_at_1(probs, target)
+        else:
+            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
+            self.precision_at_1[i] = self.patchscope.compute_precision_at_1(probs, target)
+        logger.info("Done")
+
+        self.save_to_file()
+
+    def _target_word(self, word):
         if isinstance(word, str):
             if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
                 # Note to devs: we probably want some tokenizer helpers for this kind of thing
@@ -79,37 +176,47 @@ class TokenIdentity(Patchscope):
         else:
             # Otherwise, we find the next token from the source output:
             target = self.patchscope.source_output[-1].argmax(dim=-1).item()
+        return target
 
-        # Jesus, this fixed the damn bug. Well, better than nothing.
-        import gc
-        gc.collect()
+    def prepare_data_array(self):
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
+            self.precision_at_1 = np.zeros((len(self.source_layers), len(self.target_layers)))
+        elif hasattr(self, "source_layers"):
+            self.surprisal = np.zeros(len(self.source_layers))
+            self.precision_at_1 = np.zeros(len(self.source_layers))
 
-        logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
-        self.surprisal = np.zeros(len(self.layers))
-        for i, output in enumerate(self.outputs):
-            probs = torch.softmax(output[0], dim=-1)
-            self.surprisal[i] = self.patchscope.compute_surprisal(probs[-1], target)
-        logger.info("Done")
-
+    def save_to_file(self):
         if self.filename:
-            np.save(self.filename.with_suffix(".npy"), self.surprisal)
+            surprisal_file = Path(self.filename.stem + "_surprisal").with_suffix(".npy")
+            np.save(surprisal_file, self.surprisal)
+            precision_file = Path(self.filename.stem + "_precision_at_1").with_suffix(".npy")
+            np.save(precision_file, self.precision_at_1)
 
-        return self
-
-    def visualize(self):
-        if self.surprisal is None:
+    def visualize(self, show: bool = True):
+        if not hasattr(self, "surprisal"):
             raise ValueError("You need to compute the surprisal values first.")
 
         # Visualize the surprisal values
-        self.fig = plot_surprisal(
-            self.layers,
-            self.surprisal,
-            title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
-        )
+        if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+            self.fig = create_heatmap(
+                self.source_layers,
+                self.target_layers,
+                self.surprisal,
+                title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
+            )
+        elif hasattr(self, "source_layers"):
+            self.fig = plot_surprisal(
+                self.source_layers,
+                self.surprisal,
+                title=f"Token Identity: Surprisal by Layer {self.model_name} Prompt: {self.prompt[-30:]}",
+            )
 
         if self.filename:
             self.fig.write_image(self.filename.with_suffix(".png"))
-        self.fig.show()
+        if show:
+            self.fig.show()
+        return self
 
 
 class ExtendedTokenIdentity(Patchscope):
