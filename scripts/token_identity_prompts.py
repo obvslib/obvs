@@ -40,24 +40,25 @@ prompts = [
     # "Someone sent me this. Do you understand it? 'x",
     # "Imaging someone saying such a random thing! (I'll tell you what they said: 'x",
     # "Imaging someone writing such a random thing! (I'll tell you what they said: 'x",
-    "bat shoe 135 hello black fire tree z 1 new true x",
-    "I love you I love you I love you x",
-    "I hate you I hate you I hate you x",
-    "love love love love love love love love x",
-    "hate hate hate hate hate hate hate hate x",
-    "123 453 1 500 1022 12 0 x",
-    "? ! , @ ? ! . x",
-    "pretty, slow, fast, tall, short, big, small, heavy, light, dark, bright, x",
-    "elephant, hat, cat, degree, raindrop, planet, x",
-    "run, walk, jump, sit, stand, sleep, eat, drink, x",
-    "he, she, it, they, we, you, I, x",
-    "., ,, ?, !, :, ;, ', x",
-    "This is so random! 'x"
-    "This is so random? 'x"
-    "What this? 'x"
-    "What? 'x"
-    "What!? 'x"
-    "What! 'x"
+    # "bat shoe 135 hello black fire tree z 1 new true x",
+    # "I love you I love you I love you x",
+    # "I hate you I hate you I hate you x",
+    # "love love love love love love love love x",
+    # "hate hate hate hate hate hate hate hate x",
+    # "123 453 1 500 1022 12 0 x",
+    # "? ! , @ ? ! . x",
+    # "pretty, slow, fast, tall, short, big, small, heavy, light, dark, bright, x",
+    # "elephant, hat, cat, degree, raindrop, planet, x",
+    # "run, walk, jump, sit, stand, sleep, eat, drink, x",
+    # "he, she, it, they, we, you, I, x",
+    # "., ,, ?, !, :, ;, ', x",
+    # "This is so random! 'xThis is so random? 'xWhat this? 'xWhat? 'xWhat!? 'xWhat! 'x",
+    "This is so random! 'x",
+    "This is so random? 'x",
+    "What this? 'x",
+    "What? 'x",
+    "What!? 'x",
+    "What! 'x",
 ]
 
 
