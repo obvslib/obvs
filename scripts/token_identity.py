@@ -1,21 +1,11 @@
-from __future__ import annotations
+from obvs.lenses import TokenIdentity
+from obvs.vis import create_heatmap, plot_surprisal
 
-import time
+from datasets import load_dataset
 
-import numpy as np
-import torch
-import typer
-from tqdm import tqdm
-from pathlib import Path
+dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
+shuffled_dataset = dataset.shuffle(seed=42, buffer_size=50)
 
-from obvspython.logging import logger
-from obvspython.patchscope import Patchscope, SourceContext, TargetContext
-from obvspython.vis import create_heatmap, plot_surprisal
-
-app = typer.Typer()
-
-
-# Define the model names for LLaMA-2, Mistral, and GPT-2
 model_names = {
     "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
     "llama": "meta-llama/Llama-2-13b-hf",
@@ -27,112 +17,74 @@ model_names = {
 }
 
 
-def run_over_all_layers(patchscope, target_tokens, values):
-    source_layers = list(range(patchscope.n_layers))
-    target_layers = list(range(patchscope.n_layers))
-    iterations = len(source_layers) * len(target_layers)
+def main(model_name, n_samples=5, full=False):
+    samples = []
+    for example in shuffled_dataset.take(n_samples):
+        samples.append(example['text'])
 
-    # with tqdm(total=iterations) as pbar:
-    #     outputs = patchscope.over_pairs(source_layers, target_layers)
-    #     pbar.update(1)
+    # Trim the samples to the first 300 characters
+    samples = [sample[:1000] for sample in samples]
 
-    with tqdm(total=iterations) as pbar:
-        outputs = patchscope.over(source_layers, target_layers)
-        pbar.update(1)
+    # Make sure it ends on a space
+    samples = [sample[:sample.rfind(' ')] for sample in samples]
 
-    logger.info("Computing surprisal")
-    target_output = 0
+    # Strip the spaces
+    samples = [sample.strip() for sample in samples]
 
-    # for i in source_layers:
-    #     # Get the output of the run
-    #     probs = torch.softmax(outputs[i][target_output], dim=-1)
-    #     values[i] = patchscope.compute_surprisal(probs[-1], target_tokens)
+    ti = TokenIdentity("", model_names[model_name], device="cpu")
 
-    for i in source_layers:
-        for j in target_layers:
-            # Get the output of the run
-            probs = torch.softmax(outputs[i][j][target_output].value, dim=-1)
-            values[i, j] = patchscope.compute_surprisal(probs[-1], target_tokens)
-    logger.info("Done")
+    source_layers = range(ti.patchscope.n_layers_source)
+    target_layers = range(ti.patchscope.n_layers_target)
 
-    return source_layers, target_layers, values, outputs
+    surprisals = []
+    for prompt in samples:
+        ti.filename = f"{'full' if full else ''}token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
+        ti.patchscope.source.prompt = prompt
+        ti.run_and_compute(
+            source_layers=source_layers,
+            target_layers=target_layers if full else None
+        ).visualize()
+        surprisals.append(ti.surprisal)
 
+    # Average the surprisals, calculate the standard deviation and plot with plotly
+    import numpy as np
 
-def upate_saved_values(values):
-    # Save the values to a file
-    np.save("scripts/values.npy", values)
+    if len(surprisals[0].shape) == 1:
+        # Its a single set of layers
+        mean_surprisal = np.mean(surprisals, axis=0)
+        std_surprisal = np.std(surprisals, axis=0)
 
+        fig = plot_surprisal(
+            ti.source_layers,
+            mean_surprisal,
+            std_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+        )
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{len(samples)}_samples.html")
+        fig.show()
 
-@app.command()
-def main(
-    word: str = typer.Argument("boat", help="The expected next token."),
-    model: str = "gpt2",
-    prompt: str = typer.Option(
-        "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
-        help="Source Prompt",
-    ),
-):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Generating definition for word: {word} using model: {model}")
-    if model in model_names:
-        model = model_names[model]
+    elif len(surprisals[0].shape) == 2:
+        # Its a set of layers for each token, meaning a heatmap. We dont botther with the std
+        mean_surprisal = np.mean(surprisals, axis=0)
 
-    model_name = model.replace("/", "-")
-    filename = f"{model_name}_{word}"
-
-    # prompt = "I went to the store but I didn't have any cash, so I had to use the ATM. Thankfully, this is the USA so I found one easy."
-    # Setup source and target context with the simplest configuration
-    source_context = SourceContext(
-        prompt=prompt,  # Example input text
-        model_name=model,  # Model name
-        position=-1,
-        device=device,
-    )
-
-    target_context = TargetContext.from_source(source_context)
-    target_context.prompt = (
-        "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
-    )
-    target_context.max_new_tokens = 1
-    patchscope = Patchscope(source=source_context, target=target_context)
-
-    try:
-        patchscope.source.position, target_tokens = patchscope.source_position_tokens(word)
-        patchscope.target.position, _ = patchscope.target_position_tokens("X")
-
-        assert (
-            patchscope.source_words[patchscope.source.position].strip() == word
-        ), patchscope.source_words[patchscope.source.position]
-        assert (
-            patchscope.target_words[patchscope.target.position].strip() == "X"
-        ), patchscope.target_words[patchscope.target.position]
-
-    except ValueError:
-        target_tokens = patchscope.tokenizer.encode(" boat", add_special_tokens=False)
-        patchscope.source.position = -1
-        patchscope.target.position = -1
-
-    if Path(f"scripts/{filename}.npy").exists():
-        values = np.load(f"scripts/{filename}.npy")
-    else:
-        values = np.zeros((patchscope.n_layers_source, patchscope.n_layers_target))
-
-    start = time.time()
-    source_layers, target_layers, values, outputs = run_over_all_layers(patchscope, target_tokens, values)
-    print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
-
-    # Save the values to a file
-    np.save(f"scripts/{filename}.npy", values)
-
-    # fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
-    # fig.write_image(f"scripts/{filename}.png")
-    # fig.show()
-
-    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
-    # Save as png
-    fig.write_image(f"scripts/{filename}.png")
-    fig.show()
+        fig = create_heatmap(
+            ti.source_layers,
+            ti.target_layers,
+            mean_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus"
+        )
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{len(samples)}_samples.html")
+        fig.show()
 
 
 if __name__ == "__main__":
-    app()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Calculate the surprisal of a set of samples using a model")
+    parser.add_argument("model_name", type=str, help="The name of the model to use")
+    parser.add_argument("--n", type=int, default=5, help="The number of samples to average over")
+    parser.add_argument("--full", action="store_true", help="Whether to run over all layers or pairs")
+    args = parser.parse_args()
+
+    print(args.model_name, args.n, args.full)
+    main(args.model_name, args.n, args.full)
