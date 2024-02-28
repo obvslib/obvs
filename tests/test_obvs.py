@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from obvspython import __version__
+from obvs import __version__
 
 
 def test_version():

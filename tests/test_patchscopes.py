@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from obvspython.patchscope import Patchscope, SourceContext, TargetContext
+from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
 class TestContext:
