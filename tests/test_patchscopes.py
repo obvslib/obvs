@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import torch
 
 from obvs.patchscope import Patchscope, SourceContext, TargetContext
@@ -30,6 +31,21 @@ class TestContext:
         target = TargetContext("target", mapping_function=lambda x: x + 1)
         assert target.mapping_function(1) == 2
         assert target.mapping_function(tensor).equal(tensor + 1)
+
+    @staticmethod
+    def test_can_only_have_prompt_or_embedding():
+        with pytest.raises(ValueError):
+            SourceContext(prompt="foo", embedding=torch.Tensor([1,2,3]))
+
+        with pytest.raises(ValueError):
+            TargetContext(prompt="foo", embedding=torch.Tensor([1,2,3]))
+
+        # Should not throw exceptions
+        SourceContext(prompt="foo")
+        TargetContext(prompt="foo")
+
+        SourceContext(embedding=torch.Tensor([1,2,3]))
+        TargetContext(embedding=torch.Tensor([1,2,3]))
 
 
 class TestPatchscope:

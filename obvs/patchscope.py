@@ -49,16 +49,23 @@ class SourceContext:
     Source context for the patchscope
     """
 
-    prompt: Sequence[str] = "<|endoftext|>"
+    prompt: Sequence[str] | None = None
+    embedding: torch.Tensor | None = None # [pos, dmodel]
+
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
+    def __post_init__(self) -> None:
+        if self.prompt is not None and self.embedding is not None:
+            raise ValueError("Can only provide prompt or embedding, not both.")
+
     def __repr__(self) -> str:
         return (
-            f"SourceContext(prompt={self.prompt}, position={self.position}, "
-            f"model_name={self.model_name}, layer={self.layer}, device={self.device})"
+            f"SourceContext(prompt={self.prompt}, embedding={self.embedding},"
+            f"position={self.position}, model_name={self.model_name}, layer={self.layer},"
+            f"device={self.device})"
         )
 
 
@@ -81,6 +88,7 @@ class TargetContext(SourceContext):
     ) -> TargetContext:
         return TargetContext(
             prompt=source.prompt,
+            embedding=source.embedding,
             position=source.position,
             model_name=source.model_name,
             layer=source.layer,
@@ -91,9 +99,10 @@ class TargetContext(SourceContext):
 
     def __repr__(self) -> str:
         return (
-            f"TargetContext(prompt={self.prompt}, position={self.position}, "
-            f"model_name={self.model_name}, layer={self.layer}, device={self.device}, "
-            f"max_new_tokens={self.max_new_tokens}, "
+            f"TargetContext(prompt={self.prompt}, embedding={self.embedding},"
+            f"position={self.position}, " f"model_name={self.model_name},"
+            f"layer={self.layer}, device={self.device},"
+            f"max_new_tokens={self.max_new_tokens},"
             f"mapping_function={self.mapping_function})"
         )
 
