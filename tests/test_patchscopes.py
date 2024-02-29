@@ -8,6 +8,8 @@ from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
 class TestContext:
+    STUB_EMBEDDING = torch.ones((1, 2))
+
     @staticmethod
     def test_source_context_init():
         source = SourceContext("source")
@@ -32,20 +34,28 @@ class TestContext:
         assert target.mapping_function(1) == 2
         assert target.mapping_function(tensor).equal(tensor + 1)
 
-    @staticmethod
-    def test_can_only_have_prompt_or_embedding():
+    def test_can_only_have_prompt_or_embedding(self):
         with pytest.raises(ValueError):
-            SourceContext(prompt="foo", embedding=torch.Tensor([1,2,3]))
+            SourceContext(prompt="foo", embedding=self.STUB_EMBEDDING)
 
         with pytest.raises(ValueError):
-            TargetContext(prompt="foo", embedding=torch.Tensor([1,2,3]))
+            TargetContext(prompt="foo", embedding=self.STUB_EMBEDDING)
 
         # Should not throw exceptions
         SourceContext(prompt="foo")
         TargetContext(prompt="foo")
 
-        SourceContext(embedding=torch.Tensor([1,2,3]))
-        TargetContext(embedding=torch.Tensor([1,2,3]))
+        SourceContext(embedding=self.STUB_EMBEDDING)
+        TargetContext(embedding=self.STUB_EMBEDDING)
+
+    def test_embedding_dimensions_must_be_two(self):
+        SourceContext(embedding=self.STUB_EMBEDDING)
+
+        with pytest.raises(ValueError):
+            SourceContext(embedding=torch.ones((1,)))
+
+        with pytest.raises(ValueError):
+            SourceContext(embedding=torch.ones((1,2,3)))
 
 
 class TestPatchscope:

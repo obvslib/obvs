@@ -58,15 +58,26 @@ class SourceContext:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __post_init__(self) -> None:
+        if self.prompt is None and self.embedding is None:
+            self.prompt = "<|endoftext|>"
+
         if self.prompt is not None and self.embedding is not None:
             raise ValueError("Can only provide prompt or embedding, not both.")
 
-    def __repr__(self) -> str:
-        return (
-            f"SourceContext(prompt={self.prompt}, embedding={self.embedding},"
-            f"position={self.position}, model_name={self.model_name}, layer={self.layer},"
-            f"device={self.device})"
-        )
+        if self.embedding is not None:
+            if self.embedding.dim() != 2:
+                raise ValueError(f"embedding must have shape [pos, dmodel]. embedding.shape = {self.embedding.shape}")
+
+            self.prompt = self._create_stub_prompt(self.embedding.shape[0])
+
+    def _create_stub_prompt(self, token_count: int) -> str:
+        """
+        Create a prompt with exactly `token_count` tokens
+        """
+
+        # Works with GPT2 & GPTJ, not sure about other models
+        return " ".join("_" * token_count)
+
 
 
 @dataclass
@@ -97,15 +108,6 @@ class TargetContext(SourceContext):
             device=source.device,
         )
 
-    def __repr__(self) -> str:
-        return (
-            f"TargetContext(prompt={self.prompt}, embedding={self.embedding},"
-            f"position={self.position}, " f"model_name={self.model_name},"
-            f"layer={self.layer}, device={self.device},"
-            f"max_new_tokens={self.max_new_tokens},"
-            f"mapping_function={self.mapping_function})"
-        )
-
 
 class ModelLoader:
     @staticmethod
@@ -125,7 +127,7 @@ class ModelLoader:
         if "mamba" not in model_name:
             return {"max_new_tokens": max_new_tokens}
         else:
-            return {"max_length": max_new_tokens}
+            return {"max_new_tokens": max_new_tokens}
 
 
 class Patchscope(PatchscopeBase):
@@ -168,6 +170,10 @@ class Patchscope(PatchscopeBase):
         For each architecture, you need to know the name of the layers.
         """
         with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
+            if self.source.embedding is not None:
+                # Not sure if this works with mamba and other models
+                self.source_model.transformer.wte.output = self.source.embedding
+
             self._source_hidden_state = self.manipulate_source().save()
             self.source_output = self.source_model.lm_head.output[0].save()
 
@@ -202,6 +208,10 @@ class Patchscope(PatchscopeBase):
             remote=self.REMOTE,
             **self.generation_kwargs,
         ) as _:
+            if self.target.embedding is not None:
+                # Not sure if this works with mamba and other models
+                self.target_model.transformer.wte.output = self.source.embedding
+
             self.manipulate_target()
 
     def manipulate_target(self) -> None:

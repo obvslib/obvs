@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from obvs.patchscope import ModelLoader
+import torch
+
+from obvs.patchscope import ModelLoader, Patchscope, SourceContext, TargetContext
 
 
 class TestPatchscope:
@@ -172,6 +174,38 @@ class TestPatchscope:
 
         # Assert the target has been patched to think a rat is a cat
         assert "cat" in patchscope.full_output()
+
+
+    @staticmethod
+    def test_future_lens():
+        outputs = dict()
+        for layer in range(12):
+            for pos in range(5): # marty mcfly from has 5 tokens
+                source_context = SourceContext(
+                    device='cpu',
+                    prompt="Marty McFly from",
+                    model_name='gpt2',
+                    position=pos,
+                    layer=layer,
+                )
+
+                target_context = TargetContext(
+                    device='cpu',
+                    embedding=torch.load('/Users/vy/workplace/obvslib/data/processed/gpt2_jum_henson.pt'),
+                    model_name='gpt2',
+                    max_new_tokens=3,
+                    position=-1,
+                    layer=layer,
+                )
+
+                patchscope = Patchscope(source_context, target_context)
+
+                patchscope.run()
+
+                outputs[(layer, pos)] = patchscope.full_output()
+
+        print(outputs)
+        assert outputs == {}
 
     @staticmethod
     def test_token_identity_prompt_early(patchscope):

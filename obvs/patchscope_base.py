@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import List
 
 import torch
 
@@ -38,14 +39,15 @@ class PatchscopeBase(ABC):
         pass
 
     @property
-    def source_tokens(self):
+    def source_tokens(self) -> List[int]:
         """
         Return the source tokens
         """
+        print(self.source.prompt)
         return self.tokenizer.encode(self.source.prompt)
 
     @property
-    def target_tokens(self):
+    def target_tokens(self) -> List[int]:
         """
         Return the target tokens
         """
