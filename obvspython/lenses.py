@@ -22,9 +22,15 @@ class LogitLens(Patchscope):
             applying unembed to it.
         """
 
-    def __init__(self, model, prompt, device):
+    def __init__(self, model: str, prompt: str, device: str):
         """ Constructor. Setup a Patchscope object with Source and Target context.
             The target context is equal to the source context, apart from the layer.
+
+        Args:
+            model (str): Name of the model. Must be a valid name for huggingface transformers
+                package
+            prompt (str): The prompt to be analyzed
+            device (str): Device on which the model should be run: e.g. cpu, auto
         """
 
         # create SourceContext, leave position and layer as default for now
