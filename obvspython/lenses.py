@@ -4,7 +4,12 @@ lenses.py
 Implementation of some widely-known lenses in the Patchscope framework
 """
 
+from typing import List
+import torch
+from obvspython.logging import logger
+from obvspython.vis import create_annotated_heatmap
 from obvspython.patchscope import SourceContext, TargetContext, Patchscope
+
 
 class LogitLens(Patchscope):
     """ Implementation of logit-lens in patchscope framework.
@@ -33,6 +38,8 @@ class LogitLens(Patchscope):
             device (str): Device on which the model should be run: e.g. cpu, auto
         """
 
+        self.model_name = model
+
         # create SourceContext, leave position and layer as default for now
         source_context = SourceContext(prompt=prompt, model_name=model, device=device)
 
@@ -43,4 +50,55 @@ class LogitLens(Patchscope):
         # create Patchscope object
         self.patchscope = Patchscope(source_context, target_context)
 
+    def create_top_token_logit_pred_heatmap(self, substring: str, layers: List[int]):
+        """ Create a heatmap of the top predicted token and its logit for each layer in layers
+            and each token in substring.
+            Based on the plot from:
+            https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens
 
+        Args:
+            substring (str): Substring of the prompt for which the top prediction and logits
+                should be calculated.
+            layers (List[int]): Indices of Transformer Layers for which the lens should be applied
+        """
+
+        # get the starting position of the substring in the prompt
+        try:
+            start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
+        except ValueError:
+            logger.error('The substring "%s" could not be found in the prompt "%s"', substring,
+                         self.source.prompt)
+            return
+
+        logits = []
+        preds = []
+        x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}' for tok in substring_tokens]
+        y_ticks = [f'{self.patchscope.MODEL_SOURCE}_{self.patchscope.LAYER_SOURCE}{i}'
+                   for i in layers]
+
+        # for each token in the substring,
+        for i, layer in enumerate(layers):
+            layer_logits = []
+            layer_preds = []
+            for j in range(len(substring_tokens)):
+
+                self.patchscope.source.layer = layer
+                self.patchscope.source.position = start_pos + j
+                self.patchscope.target.position = start_pos + j
+                self.patchscope.run()
+
+                # get the top prediction and logit
+                top_logit, top_pred_idx = torch.max(self.patchscope.logits()[start_pos + j], dim=0)
+                # convert the top_pred_idx to a word
+                top_pred = self.patchscope.tokenizer.decode(top_pred_idx)
+
+                layer_logits.append(top_logit.item())
+                layer_preds.append(top_pred)
+
+            logits.append(layer_logits)
+            preds.append(layer_preds)
+
+        # create a heatmap with the top logits and predicted tokens
+        fig = create_annotated_heatmap(logits, preds, x_ticks, y_ticks,
+                                       title='Top predicted token and its logit')
+        fig.write_html(f'{self.model_name}_logitlens_top_logits_preds.html')
