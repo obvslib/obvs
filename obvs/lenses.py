@@ -9,13 +9,14 @@ from typing import Optional, Sequence
 from obvs.patchscope import SourceContext, TargetContext, Patchscope
 from obvs.vis import plot_surprisal, create_heatmap
 from obvs.logging import logger
+from obvs.metrics import PrecisionAtKMetric, SurprisalMetric
 
 import numpy as np
 import torch
 import gc
 
 
-class TokenIdentity(Patchscope):
+class TokenIdentity:
     """ Implementation of token identiy patchscope.
         The logit-lens is defined in the patchscope framework as follows:
         Target prompt is an identity prompt:
@@ -57,20 +58,20 @@ class TokenIdentity(Patchscope):
         target_context.prompt = target_prompt or self.IDENTITIY_PROMPT
 
         # Setup our patchscope
-        self.patchscope = Patchscope(source=source_context, target=target_context)
+        self._patchscope = Patchscope(source=source_context, target=target_context)
 
         # We find the source position and the expected output This uses the model tokenizer,
         # so it has to be done after the patchscope is created
         if source_phrase:
-            self.patchscope.source.position = self.patchscope.find_in_source(source_phrase)
+            self._patchscope.source.position = self._patchscope.find_in_source(source_phrase)
 
     @property
     def prompt(self):
-        return self.patchscope.source.prompt
+        return self._patchscope.source.prompt
 
     @prompt.setter
     def prompt(self, value):
-        self.patchscope.source.prompt = value
+        self._patchscope.source.prompt = value
 
     @property
     def filename(self):
@@ -81,14 +82,14 @@ class TokenIdentity(Patchscope):
         self._filename = Path(value).expanduser()
 
     def run(self, source_layers: Optional[Sequence[int]] = None, target_layers: Optional[Sequence[int]] = None):
-        self.source_layers = source_layers or list(range(self.patchscope.n_layers_source))
+        self.source_layers = source_layers or list(range(self._patchscope.n_layers_source))
         if target_layers:
             self.target_layers = target_layers
             # If there are two sets of layers, run over all of them in nested for loops
-            self.outputs = list(self.patchscope.over(self.source_layers, self.target_layers))
+            self.outputs = list(self._patchscope.over(self.source_layers, self.target_layers))
         else:
             # Otherwise, run over the same set of layers
-            self.outputs = list(self.patchscope.over_pairs(self.source_layers, self.source_layers))
+            self.outputs = list(self._patchscope.over_pairs(self.source_layers, self.source_layers))
 
         return self
 
@@ -98,19 +99,17 @@ class TokenIdentity(Patchscope):
 
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
 
-        gc.collect()
-
         if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
             for i, source_layer in enumerate(self.source_layers):
                 for j, target_layer in enumerate(self.target_layers):
                     probs = torch.softmax(self.outputs[i * len(self.target_layers) + j], dim=-1)
-                    self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
-                    self.precision_at_1[i, j] = self.patchscope.compute_precision_at_1(probs, target)
+                    self.surprisal[i, j] = SurprisalMetric.batch(probs, target)
+                    self.precision_at_1[i, j] = PrecisionAtKMetric.batch(probs, target, 1)
         elif hasattr(self, "source_layers"):
             for i, output in enumerate(self.outputs):
                 probs = torch.softmax(output, dim=-1)
-                self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
-                self.precision_at_1[i] = self.patchscope.compute_precision_at_1(probs, target)
+                self.surprisal[i] = SurprisalMetric.batch(probs, target)
+                self.precision_at_1[i] = PrecisionAtKMetric.batch(probs, target, 1)
         logger.info("Done")
 
         self.save_to_file()
@@ -127,29 +126,28 @@ class TokenIdentity(Patchscope):
         For larger models, saving the outputs for every layer eats up the GPU memoery. This method
         runs the patchscope and computes the surprisal in one go, saving memory.
         """
-        self.source_layers = source_layers or list(range(self.patchscope.n_layers_source))
+        self.source_layers = source_layers or list(range(self._patchscope.n_layers_source))
         if target_layers:
             self.target_layers = target_layers
             # If there are two sets of layers, run over all of them in nested for loops
-            self.outputs = self.patchscope.over(self.source_layers, self.target_layers)
+            self.outputs = self._patchscope.over(self.source_layers, self.target_layers)
         else:
             # Otherwise, run over the same set of layers
-            self.outputs = self.patchscope.over_pairs(self.source_layers, self.source_layers)
+            self.outputs = self._patchscope.over_pairs(self.source_layers, self.source_layers)
 
         self.prepare_data_array()
 
-        # Get the first output to initialize the state of the patchscope
         if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
             for i, source_layer in enumerate(self.source_layers):
                 for j, target_layer in enumerate(self.target_layers):
-                    self.nextloop(next(self.outputs), word, i, j)
+                    self._nextloop(next(self.outputs), word, i, j)
         elif hasattr(self, "source_layers"):
             for i, output in enumerate(self.outputs):
-                self.nextloop(next(self.outputs), word, i, None)
+                self._nextloop(next(self.outputs), word, i, None)
 
         return self
 
-    def nextloop(self, output, word, i=None, j=None):
+    def _nextloop(self, output, word, i=None, j=None):
         target = self._target_word(word)
 
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
@@ -158,24 +156,24 @@ class TokenIdentity(Patchscope):
 
         probs = torch.softmax(output, dim=-1)
         if i is not None and j is not None:
-            self.surprisal[i, j] = self.patchscope.compute_surprisal(probs, target)
-            self.precision_at_1[i, j] = self.patchscope.compute_precision_at_1(probs, target)
+            self.surprisal[i, j] = SurprisalMetric.batch(probs, target)
+            self.precision_at_1[i, j] = PrecisionAtKMetric.batch(probs, target, 1)
         else:
-            self.surprisal[i] = self.patchscope.compute_surprisal(probs, target)
-            self.precision_at_1[i] = self.patchscope.compute_precision_at_1(probs, target)
+            self.surprisal[i] = SurprisalMetric.batch(probs, target)
+            self.precision_at_1[i] = PrecisionAtKMetric.batch(probs, target, 1)
         logger.info("Done")
 
         self.save_to_file()
 
     def _target_word(self, word):
         if isinstance(word, str):
-            if not word.startswith(" ") and "gpt" in self.patchscope.model_name:
+            if not word.startswith(" ") and "gpt" in self._patchscope.model_name:
                 # Note to devs: we probably want some tokenizer helpers for this kind of thing
                 logger.warning("Target should probably start with a space!")
-            target = self.patchscope.tokenizer.encode(word)
+            target = self._patchscope.tokenizer.encode(word)
         else:
             # Otherwise, we find the next token from the source output:
-            target = self.patchscope.source_output[-1].argmax(dim=-1).item()
+            target = self._patchscope.source_output[-1].argmax(dim=-1).item()
         return target
 
     def prepare_data_array(self):
@@ -216,33 +214,4 @@ class TokenIdentity(Patchscope):
             self.fig.write_image(self.filename.with_suffix(".png"))
         if show:
             self.fig.show()
-        return self
-
-
-class ExtendedTokenIdentity(Patchscope):
-    """ Implementation of extended token identiy patchscope.
-        In order to support mutli-token phrases, we can extend the token identity patchscope.
-        We can also loosen the constraint that the source and target layers are the same to
-        check which are the best pairings.
-
-        We also allow for patching into a specified part of the target phrase, instead of the end.
-    """
-
-    def __init__(
-            self,
-            source_prompt: str,
-            model_name: str,
-            source_phrase: str,
-            device: Optional[str] = None,
-            target_prompt: Optional[str] = None,
-            target_phrase: Optional[str] = None,
-    ):
-        pass
-
-    def run(self, source_layers: Optional[Sequence[int]] = None, target_layers: Optional[Sequence[int]] = None):
-        self.source_layers = source_layers or list(range(self.patchscope.n_layers))
-        self.target_layers = target_layers or list(range(self.patchscope.n_layers))
-
-        self.outputs = self.patchscope.over_pairs(self.source_layers, self.target_layers)
-
         return self
