@@ -149,7 +149,7 @@ class TokenIdentity:
                     self._nextloop(next(self.outputs), word, i, j)
         elif hasattr(self, "source_layers"):
             for i, output in enumerate(self.outputs):
-                self._nextloop(next(self.outputs), word, i, None)
+                self._nextloop(output, word, i, None)
 
         return self
 

@@ -5,9 +5,6 @@ from datasets import load_dataset
 from obvs.lenses import TokenIdentity
 from obvs.vis import create_heatmap, plot_surprisal
 
-dataset = load_dataset("oscar-corpus/OSCAR-2201", "en", split="train", streaming=True)
-shuffled_dataset = dataset.shuffle(seed=42, buffer_size=50)
-
 model_names = {
     "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
     "llama": "meta-llama/Llama-2-13b-hf",
@@ -20,6 +17,9 @@ model_names = {
 
 
 def main(model_name, n_samples=5, full=False):
+    dataset = load_dataset("oscar-corpus/OSCAR-2201", "en", split="train", streaming=True)
+    shuffled_dataset = dataset.shuffle(seed=43, buffer_size=n_samples)
+
     samples = []
     for example in shuffled_dataset.take(n_samples):
         samples.append(example["text"])

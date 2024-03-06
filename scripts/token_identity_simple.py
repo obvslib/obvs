@@ -5,7 +5,7 @@ from datasets import load_dataset
 from obvs.lenses import TokenIdentity
 
 dataset = load_dataset("oscar-corpus/OSCAR-2201", "en", split="train", streaming=True)
-shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
+shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10)
 
 samples = []
 for example in shuffled_dataset.take(10):
@@ -36,7 +36,7 @@ std_surprisal = np.std(surprisals, axis=0)
 
 fig = go.Figure(
     data=go.Scatter(
-        x=ti.layers,
+        x=ti.source_layers,
         y=mean_surprisal,
         mode="lines+markers",
         error_y=dict(
