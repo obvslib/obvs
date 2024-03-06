@@ -23,12 +23,19 @@ class PrecisionAtKMetric(Metric):
 
     @staticmethod
     def batch(logits, true_token_index, topk) -> torch.Tensor:
-        if not torch.is_tensor(true_token_index):
+        if not torch.is_tensor(true_token_index) and len(logits.shape) == 2:
             true_token_index = torch.tensor(
                 [true_token_index], dtype=torch.long, device=logits.device
             ).repeat(logits.size(0))
-        elif true_token_index.dim() == 0:
+        elif torch.is_tensor(true_token_index) and true_token_index.dim() == 0 and len(logits.shape) == 2:
             true_token_index = true_token_index.repeat(logits.size(0))
+        elif len(logits.shape) == 1:
+            true_token_index = torch.tensor(
+                [true_token_index], dtype=torch.long, device=logits.device
+            )
+
+        if len(logits.shape) == 1:
+            logits = logits.unsqueeze(0)
 
         true_token_index = true_token_index.unsqueeze(1)
 
@@ -59,12 +66,19 @@ class SurprisalMetric(Metric):
 
     @staticmethod
     def batch(logits, true_token_index) -> torch.Tensor:
-        if not torch.is_tensor(true_token_index):
+        if not torch.is_tensor(true_token_index) and len(logits.shape) == 2:
             true_token_index = torch.tensor(
                 [true_token_index], dtype=torch.long, device=logits.device
             ).repeat(logits.size(0))
-        elif true_token_index.dim() == 0:
+        elif torch.is_tensor(true_token_index) and true_token_index.dim() == 0 and len(logits.shape) == 2:
             true_token_index = true_token_index.repeat(logits.size(0))
+        elif len(logits.shape) == 1:
+            true_token_index = torch.tensor(
+                [true_token_index], dtype=torch.long, device=logits.device
+            )
+
+        if len(logits.shape) == 1:
+            logits = logits.unsqueeze(0)
 
         probabilities = torch.nn.functional.softmax(logits, dim=-1)
         probabilities = torch.clamp(probabilities, min=1e-12)

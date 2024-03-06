@@ -33,13 +33,13 @@ def main(model_name, n_samples=5, full=False):
 
     ti = TokenIdentity("", model_names[model_name], device="cpu")
 
-    source_layers = range(ti.patchscope.n_layers_source)
-    target_layers = range(ti.patchscope.n_layers_target)
+    source_layers = range(ti._patchscope.n_layers_source)
+    target_layers = range(ti._patchscope.n_layers_target)
 
     surprisals = []
     for prompt in samples:
         ti.filename = f"{'full' if full else ''}token_identity_{model_name}_{prompt.replace(' ', '')[:10]}"
-        ti.patchscope.source.prompt = prompt
+        ti._patchscope.source.prompt = prompt
         ti.run_and_compute(
             source_layers=source_layers,
             target_layers=target_layers if full else None
