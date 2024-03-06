@@ -263,5 +263,4 @@ class TestPatchscope:
         # The first of which is the length of the target tokens
         assert values[0][0][0].shape[0] == len(patchscope.target_tokens)
         # And the second has length 1
-        __import__('ipdb').set_trace()
         assert values[0][0][1].shape[0] == 1

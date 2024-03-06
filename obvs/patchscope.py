@@ -35,7 +35,6 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from tqdm import tqdm
-import gc
 
 import torch
 from nnsight import LanguageModel
@@ -227,7 +226,6 @@ class Patchscope(PatchscopeBase):
             del self._source_hidden_state
         if hasattr(self, "_mapped_hidden_state"):
             del self._mapped_hidden_state
-        gc.collect()
         torch.cuda.empty_cache()
 
     def over(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
