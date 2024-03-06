@@ -1,5 +1,7 @@
-from torchmetrics import Metric
+from __future__ import annotations
+
 import torch
+from torchmetrics import Metric
 
 
 class PrecisionAtKMetric(Metric):
@@ -25,13 +27,17 @@ class PrecisionAtKMetric(Metric):
     def batch(logits, true_token_index, topk) -> torch.Tensor:
         if not torch.is_tensor(true_token_index) and len(logits.shape) == 2:
             true_token_index = torch.tensor(
-                [true_token_index], dtype=torch.long, device=logits.device
+                [true_token_index], dtype=torch.long, device=logits.device,
             ).repeat(logits.size(0))
-        elif torch.is_tensor(true_token_index) and true_token_index.dim() == 0 and len(logits.shape) == 2:
+        elif (
+            torch.is_tensor(true_token_index)
+            and true_token_index.dim() == 0
+            and len(logits.shape) == 2
+        ):
             true_token_index = true_token_index.repeat(logits.size(0))
         elif len(logits.shape) == 1:
             true_token_index = torch.tensor(
-                [true_token_index], dtype=torch.long, device=logits.device
+                [true_token_index], dtype=torch.long, device=logits.device,
             )
 
         if len(logits.shape) == 1:
@@ -56,7 +62,9 @@ class SurprisalMetric(Metric):
 
     def __init__(self, dist_sync_on_step=False, batch_size=None) -> None:
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        self.add_state("surprisal", default=torch.zeros(batch_size, dtype=torch.float), dist_reduce_fx="sum")
+        self.add_state(
+            "surprisal", default=torch.zeros(batch_size, dtype=torch.float), dist_reduce_fx="sum",
+        )
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, logits, true_token_index) -> None:
@@ -68,13 +76,17 @@ class SurprisalMetric(Metric):
     def batch(logits, true_token_index) -> torch.Tensor:
         if not torch.is_tensor(true_token_index) and len(logits.shape) == 2:
             true_token_index = torch.tensor(
-                [true_token_index], dtype=torch.long, device=logits.device
+                [true_token_index], dtype=torch.long, device=logits.device,
             ).repeat(logits.size(0))
-        elif torch.is_tensor(true_token_index) and true_token_index.dim() == 0 and len(logits.shape) == 2:
+        elif (
+            torch.is_tensor(true_token_index)
+            and true_token_index.dim() == 0
+            and len(logits.shape) == 2
+        ):
             true_token_index = true_token_index.repeat(logits.size(0))
         elif len(logits.shape) == 1:
             true_token_index = torch.tensor(
-                [true_token_index], dtype=torch.long, device=logits.device
+                [true_token_index], dtype=torch.long, device=logits.device,
             )
 
         if len(logits.shape) == 1:

@@ -1,20 +1,22 @@
-from obvs.lenses import TokenIdentity
+from __future__ import annotations
 
 from datasets import load_dataset
 
-dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
+from obvs.lenses import TokenIdentity
+
+dataset = load_dataset("oscar-corpus/OSCAR-2201", "en", split="train", streaming=True)
 shuffled_dataset = dataset.shuffle(seed=42, buffer_size=10_000)
 
 samples = []
 for example in shuffled_dataset.take(10):
-    samples.append(example['text'])
+    samples.append(example["text"])
 
 
 # Trim the samples to the first 300 characters
 samples = [sample[:1000] for sample in samples]
 
 # Make sure it ends on a space
-samples = [sample[:sample.rfind(' ')] for sample in samples]
+samples = [sample[: sample.rfind(" ")] for sample in samples]
 
 # Strip the spaces
 samples = [sample.strip() for sample in samples]
@@ -38,7 +40,7 @@ fig = go.Figure(
         y=mean_surprisal,
         mode="lines+markers",
         error_y=dict(
-            type='data',
+            type="data",
             array=std_surprisal,
             visible=True,
         ),

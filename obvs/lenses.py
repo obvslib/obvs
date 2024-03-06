@@ -3,45 +3,51 @@ lenses.py
 Implementation of some widely-known lenses in the Patchscope framework
 """
 
-from pathlib import Path
-from typing import Optional, Sequence
+from __future__ import annotations
 
-from obvs.patchscope import SourceContext, TargetContext, Patchscope
-from obvs.vis import plot_surprisal, create_heatmap
-from obvs.logging import logger
-from obvs.metrics import PrecisionAtKMetric, SurprisalMetric
+import gc
+from pathlib import Path
+from typing import Optional
+from collections.abc import Sequence
 
 import numpy as np
 import torch
-import gc
+
+from obvs.logging import logger
+from obvs.metrics import PrecisionAtKMetric, SurprisalMetric
+from obvs.patchscope import Patchscope, SourceContext, TargetContext
+from obvs.vis import create_heatmap, plot_surprisal
 
 
 class TokenIdentity:
-    """ Implementation of token identiy patchscope.
-        The logit-lens is defined in the patchscope framework as follows:
-        Target prompt is an identity prompt:
-            T = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
-        Model is the same as the source model (NB, this can be changed):
-            M = M*  (source model = target model)
-        Target layer is equal to the source layer:
-            l* = l* (target layer = last layer)
-        Source position is specified by the user, target position is -1:
-            i = i*  (source position = target position)
-        Mapping is the identity function:
-            f = id  (mapping = identity function)
+    """Implementation of token identiy patchscope.
+    The logit-lens is defined in the patchscope framework as follows:
+    Target prompt is an identity prompt:
+        T = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+    Model is the same as the source model (NB, this can be changed):
+        M = M*  (source model = target model)
+    Target layer is equal to the source layer:
+        l* = l* (target layer = last layer)
+    Source position is specified by the user, target position is -1:
+        i = i*  (source position = target position)
+    Mapping is the identity function:
+        f = id  (mapping = identity function)
     """
+
     IDENTITIY_PROMPT = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
 
     def __init__(
-            self,
-            source_prompt: str,
-            model_name: str = "gpt2",
-            source_phrase: Optional[str] = None,
-            device: Optional[str] = None,
-            target_prompt: Optional[str] = None,
-            filename: Optional[str] = None
+        self,
+        source_prompt: str,
+        model_name: str = "gpt2",
+        source_phrase: str | None = None,
+        device: str | None = None,
+        target_prompt: str | None = None,
+        filename: str | None = None,
     ):
-        logger.info(f"Starting token identity patchscope with source: {source_prompt} and target: {target_prompt}")
+        logger.info(
+            f"Starting token identity patchscope with source: {source_prompt} and target: {target_prompt}",
+        )
         if filename:
             logger.info(f"Saving to file: {filename}")
             self._filename = Path(filename).expanduser()
@@ -81,7 +87,11 @@ class TokenIdentity:
     def filename(self, value):
         self._filename = Path(value).expanduser()
 
-    def run(self, source_layers: Optional[Sequence[int]] = None, target_layers: Optional[Sequence[int]] = None):
+    def run(
+        self,
+        source_layers: Sequence[int] | None = None,
+        target_layers: Sequence[int] | None = None,
+    ):
         self.source_layers = source_layers or list(range(self._patchscope.n_layers_source))
         if target_layers:
             self.target_layers = target_layers
@@ -93,7 +103,7 @@ class TokenIdentity:
 
         return self
 
-    def compute_surprisal(self, word: Optional[str] = None):
+    def compute_surprisal(self, word: str | None = None):
         target = self._target_word(word)
         self.prepare_data_array()
 
@@ -117,10 +127,10 @@ class TokenIdentity:
         return self
 
     def run_and_compute(
-            self,
-            source_layers: Optional[Sequence[int]] = None,
-            target_layers: Optional[Sequence[int]] = None,
-            word: Optional[str] = None
+        self,
+        source_layers: Sequence[int] | None = None,
+        target_layers: Sequence[int] | None = None,
+        word: str | None = None,
     ):
         """
         For larger models, saving the outputs for every layer eats up the GPU memoery. This method

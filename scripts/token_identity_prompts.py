@@ -1,9 +1,11 @@
-from obvs.lenses import TokenIdentity
-from obvs.vis import create_heatmap, plot_surprisal
+from __future__ import annotations
 
 from datasets import load_dataset
 
-dataset = load_dataset('oscar-corpus/OSCAR-2201', 'en', split='train', streaming=True)
+from obvs.lenses import TokenIdentity
+from obvs.vis import create_heatmap, plot_surprisal
+
+dataset = load_dataset("oscar-corpus/OSCAR-2201", "en", split="train", streaming=True)
 shuffled_dataset = dataset.shuffle(seed=42, buffer_size=50)
 
 model_names = {
@@ -13,7 +15,7 @@ model_names = {
     "mamba": "MrGonao/delphi-mamba-100k",
     "mistral": "mistralai/Mistral-7B-v0.1",
     "gptj": "EleutherAI/gpt-j-6B",
-    "gemma": "google/gemma-2b"
+    "gemma": "google/gemma-2b",
 }
 
 
@@ -47,7 +49,7 @@ multiprompts = [
     "Love: i love you 10, i like you 9, i hate you 1, i don't care 0, x _; "
     "Hate: i love you 1, i like you 0, i hate you 10, i don't care 9, x _; "
     "Indifference: i love you 0, i like you 1, i hate you 1, i don't care 10, x _; "
-    "Size: elephant 8, mouse 2, ant 1, whale 9, x _; "
+    "Size: elephant 8, mouse 2, ant 1, whale 9, x _; ",
 ]
 
 
@@ -73,7 +75,7 @@ def main(model_name, target_prompt, samples, full=False):
     target_layers = range(ti.patchscope.n_layers_target)
 
     # Remove everything except alphanumeric characters
-    clean_prompt = ''.join(e for e in target_prompt if e.isalnum())
+    clean_prompt = "".join(e for e in target_prompt if e.isalnum())
 
     surprisals = []
     for prompt in samples:
@@ -97,9 +99,11 @@ def main(model_name, target_prompt, samples, full=False):
             ti.source_layers,
             mean_surprisal,
             std_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus with prompt {target_prompt}"
+            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus with prompt {target_prompt}",
         )
-        fig.write_html(f"mean_surprisal_{model_names[model_name]}_{len(samples)}_samples_target_{clean_prompt[-20:]}.html")
+        fig.write_html(
+            f"mean_surprisal_{model_names[model_name]}_{len(samples)}_samples_target_{clean_prompt[-20:]}.html",
+        )
         fig.show()
 
     elif len(surprisals[0].shape) == 2:
@@ -110,19 +114,25 @@ def main(model_name, target_prompt, samples, full=False):
             ti.source_layers,
             ti.target_layers,
             mean_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus with prompt {target_prompt}"
+            f"{model_name} Surprisal of the first 1000 characters of {len(samples)} random samples from the OSCAR corpus with prompt {target_prompt}",
         )
-        fig.write_html(f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{clean_prompt[-20:]}.html")
+        fig.write_html(
+            f"mean_surprisal_heatmap_{model_names[model_name]}_{len(samples)}_samples_target_{clean_prompt[-20:]}.html",
+        )
         fig.show()
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Calculate the surprisal of a set of samples using a model")
+    parser = argparse.ArgumentParser(
+        description="Calculate the surprisal of a set of samples using a model",
+    )
     parser.add_argument("model_name", type=str, help="The name of the model to use")
     parser.add_argument("--n", type=int, default=5, help="The number of samples to average over")
-    parser.add_argument("--full", action="store_true", help="Whether to run over all layers or pairs")
+    parser.add_argument(
+        "--full", action="store_true", help="Whether to run over all layers or pairs",
+    )
     args = parser.parse_args()
 
     # for prompt in prompts:
@@ -130,18 +140,19 @@ if __name__ == "__main__":
 
     samples = []
     for example in shuffled_dataset.take(args.n):
-        samples.append(example['text'])
+        samples.append(example["text"])
 
     # Trim the samples to the first 300 characters
     samples = [sample[:1000] for sample in samples]
 
     # Make sure it ends on a space
-    samples = [sample[:sample.rfind(' ')] for sample in samples]
+    samples = [sample[: sample.rfind(" ")] for sample in samples]
 
     # Strip the spaces
     samples = [sample.strip() for sample in samples]
 
     # Run each in a seperate process
     import multiprocessing
+
     with multiprocessing.Pool(len(prompts)) as p:
         p.starmap(main, [(args.model_name, prompt, samples, args.full) for prompt in prompts])
