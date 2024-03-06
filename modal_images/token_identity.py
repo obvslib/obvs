@@ -29,16 +29,16 @@ model_names = {
 
 
 stub = Stub(
-    image=gemma_image,
+    image=mistral_image,
     name="token_identity",
     secrets=[Secret.from_name("my-huggingface-secret")],
 )
 
 
 @stub.cls(
-    # gpu=gpu.A100(memory=40, count=1),
+    gpu=gpu.A100(memory=80, count=1),
     # gpu=gpu.A10G(count=1),   # 24 GB
-    gpu=gpu.T4(count=1),  # 16 GB
+    # gpu=gpu.T4(count=1),  # 16 GB
     # cpu=1,
     timeout=60 * 30,
     container_idle_timeout=60 * 5,
@@ -54,9 +54,9 @@ class Runner:
         if not hasattr(self, "ti"):
             print("Setting up TokenIdentity")
             self.setup_ti(model_name)
-        self.ti.patchscope.source.prompt = prompt
-        source_layers = range(self.ti.patchscope.n_layers_source)
-        target_layers = range(self.ti.patchscope.n_layers_target)
+        self.ti._patchscope.source.prompt = prompt
+        source_layers = range(self.ti._patchscope.n_layers_source)
+        target_layers = range(self.ti._patchscope.n_layers_target)
         self.ti.run(
             source_layers=source_layers,
             target_layers=target_layers if full else None,
@@ -120,6 +120,11 @@ def main(model_name, n_samples=5, full=False):
                 )
                 fig.show()
                 fig.write_html(filename.with_suffix(".html"))
+        except IndexError as e:
+            print(e)
+            import sys
+
+            sys.exit(1)
         except Exception as e:
             print(e)
             break
