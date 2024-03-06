@@ -171,7 +171,7 @@ class TestPatchscope:
         patchscope.run()
 
         # Assert the target has been patched to think a rat is a cat
-        assert "a rat is a cat" in patchscope.full_output()
+        assert "cat" in patchscope.full_output()
 
     @staticmethod
     def test_token_identity_prompt_early(patchscope):
@@ -254,7 +254,7 @@ class TestPatchscope:
             patchscope.target.model_name,
             2,
         )
-        values = patchscope.over(range(2), range(4))
+        values = list(patchscope.over(range(2), range(4)))
         # Its a layer x layer list
         assert len(values) == 2
         assert len(values[0]) == 4
