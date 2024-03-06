@@ -3,7 +3,7 @@
 ###########
 [tool.poetry]
 name = "obvs"
-version = "0.0.2"
+version = "0.0.1"
 description = "Making Transformers Obvious"
 authors = ["Jamie Coombes <jamie@example.com>"]
 license = "MIT"
@@ -24,7 +24,9 @@ plotly = "^5.18.0"
 typer = "^0.9.0"
 kaleido = "0.2.1"
 fsspec = "2023.9.2"
-datasets = "^2.17.1"
+ipython = "^8.22.2"
+ipdb = "^0.13.13"
+torchmetrics = "^1.3.1"
 
 [tool.poetry.dev-dependencies]
 # Everything below here is alphabetically sorted

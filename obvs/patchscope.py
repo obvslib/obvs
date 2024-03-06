@@ -34,11 +34,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from tqdm import tqdm
-import gc
 
 import torch
 from nnsight import LanguageModel
+from tqdm import tqdm
 
 from obvs.logging import logger
 from obvs.patchscope_base import PatchscopeBase
@@ -192,7 +191,6 @@ class Patchscope(PatchscopeBase):
         with self.target_model.generate(
             self.target.prompt,
             remote=self.REMOTE,
-            use_cache=False,
             **self.generation_kwargs,
         ) as _:
             self.manipulate_target()
@@ -228,10 +226,13 @@ class Patchscope(PatchscopeBase):
             del self._source_hidden_state
         if hasattr(self, "_mapped_hidden_state"):
             del self._mapped_hidden_state
-        gc.collect()
         torch.cuda.empty_cache()
 
-    def over(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
+    def over(
+        self,
+        source_layers: Sequence[int],
+        target_layers: Sequence[int],
+    ) -> list[torch.Tensor]:
         """
         Run the patchscope over the specified set of layers.
 
@@ -251,25 +252,11 @@ class Patchscope(PatchscopeBase):
                 # Output sizes are too large. For now, we only need the last character of the first output.
                 yield self._target_outputs[0][-1, :]
 
-    # def show_size(self, outputs: list[torch.Tensor]) -> None:
-    #     """
-    #     Show the size of the outputs. I think they are filling up the GPU
-    #     Outputs are a list of torch.Tensor. So we can check the size of the list and the size of each tensor.
-    #     """
-    #     logger.info(f"Outputs size: {len(outputs)}")
-    #     # for i, row in enumerate(outputs):
-    #     for j, output in enumerate(outputs):
-    #         raw_size = output.element_size() * output.nelement()
-    #         mb = raw_size / 1024 ** 2
-    #         logger.info(f"Output {j} size: {mb:.2f} MB")
-    #     # total = sum([output.element_size() * output.nelement() for row in outputs for output in row])
-    #     total = sum([output.element_size() * output.nelement() for output in outputs])
-    #     total = total / 1024 ** 2
-    #     logger.info(f"Total size: {total:.2f} MB")
-    #     togal_gb = total / 1024
-    #     logger.info(f"Total size: {togal_gb:.2f} GB")
-
-    def over_pairs(self, source_layers: Sequence[int], target_layers: Sequence[int]) -> list[torch.Tensor]:
+    def over_pairs(
+        self,
+        source_layers: Sequence[int],
+        target_layers: Sequence[int],
+    ) -> list[torch.Tensor]:
         """
         Run the patchscope over the specified set of layers in pairs
         :param source_layers: A list of layer indices or a range of layer indices.
