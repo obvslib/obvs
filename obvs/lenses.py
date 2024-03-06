@@ -5,12 +5,10 @@ Implementation of some widely-known lenses in the Patchscope framework
 
 from __future__ import annotations
 
-import gc
 from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
-import torch
 
 from obvs.logging import logger
 from obvs.metrics import PrecisionAtKMetric, SurprisalMetric
@@ -111,14 +109,13 @@ class TokenIdentity:
         if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
             for i, source_layer in enumerate(self.source_layers):
                 for j, target_layer in enumerate(self.target_layers):
-                    probs = torch.softmax(self.outputs[i * len(self.target_layers) + j], dim=-1)
-                    self.surprisal[i, j] = SurprisalMetric.batch(probs, target)
-                    self.precision_at_1[i, j] = PrecisionAtKMetric.batch(probs, target, 1)
+                    logits = self.outputs[i * len(self.target_layers) + j]
+                    self.surprisal[i, j] = SurprisalMetric.batch(logits, target)
+                    self.precision_at_1[i, j] = PrecisionAtKMetric.batch(logits, target, 1)
         elif hasattr(self, "source_layers"):
             for i, output in enumerate(self.outputs):
-                probs = torch.softmax(output, dim=-1)
-                self.surprisal[i] = SurprisalMetric.batch(probs, target)
-                self.precision_at_1[i] = PrecisionAtKMetric.batch(probs, target, 1)
+                self.surprisal[i] = SurprisalMetric.batch(output, target)
+                self.precision_at_1[i] = PrecisionAtKMetric.batch(output, target, 1)
         logger.info("Done")
 
         self.save_to_file()
@@ -161,15 +158,12 @@ class TokenIdentity:
 
         logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
 
-        gc.collect()
-
-        probs = torch.softmax(output, dim=-1)
         if i is not None and j is not None:
-            self.surprisal[i, j] = SurprisalMetric.batch(probs, target)
-            self.precision_at_1[i, j] = PrecisionAtKMetric.batch(probs, target, 1)
+            self.surprisal[i, j] = SurprisalMetric.batch(output, target)
+            self.precision_at_1[i, j] = PrecisionAtKMetric.batch(output, target, 1)
         else:
-            self.surprisal[i] = SurprisalMetric.batch(probs, target)
-            self.precision_at_1[i] = PrecisionAtKMetric.batch(probs, target, 1)
+            self.surprisal[i] = SurprisalMetric.batch(output, target)
+            self.precision_at_1[i] = PrecisionAtKMetric.batch(output, target, 1)
         logger.info("Done")
 
         self.save_to_file()

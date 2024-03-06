@@ -256,11 +256,10 @@ class TestPatchscope:
         )
         values = list(patchscope.over(range(2), range(4)))
         # Its a layer x layer list
-        assert len(values) == 2
-        assert len(values[0]) == 4
+        assert len(values) == 8
         # With the outputs of two generations
-        assert len(values[0][0]) == 2
+        assert len(values[0]) == 2
         # The first of which is the length of the target tokens
-        assert values[0][0][0].shape[0] == len(patchscope.target_tokens)
+        assert values[0][0].shape[0] == len(patchscope.target_tokens)
         # And the second has length 1
-        assert values[0][0][1].shape[0] == 1
+        assert values[0][1].shape[0] == 1
