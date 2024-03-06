@@ -9,7 +9,6 @@ from __future__ import annotations
 import csv
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple
 
 import plotly.graph_objs as go
 from nnsight_benchmark import run_benchmark as run_nnsight_benchmark
@@ -52,7 +51,14 @@ def run_benchmarks(
             with open(csv_file_name, "w") as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow(
-                    ["method", "model_id", "prompt", "avg_runtime", "std_runtime", "generated_text"],
+                    [
+                        "method",
+                        "model_id",
+                        "prompt",
+                        "avg_runtime",
+                        "std_runtime",
+                        "generated_text",
+                    ],
                 )
 
         with open(csv_file_name, "a") as csv_file:

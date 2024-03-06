@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 from custom_timeit import custom_timeit
 from nnsight import LanguageModel
 

@@ -131,7 +131,9 @@ if __name__ == "__main__":
     parser.add_argument("model_name", type=str, help="The name of the model to use")
     parser.add_argument("--n", type=int, default=5, help="The number of samples to average over")
     parser.add_argument(
-        "--full", action="store_true", help="Whether to run over all layers or pairs",
+        "--full",
+        action="store_true",
+        help="Whether to run over all layers or pairs",
     )
     args = parser.parse_args()
 

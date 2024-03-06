@@ -229,7 +229,9 @@ class Patchscope(PatchscopeBase):
         torch.cuda.empty_cache()
 
     def over(
-        self, source_layers: Sequence[int], target_layers: Sequence[int],
+        self,
+        source_layers: Sequence[int],
+        target_layers: Sequence[int],
     ) -> list[torch.Tensor]:
         """
         Run the patchscope over the specified set of layers.
@@ -251,7 +253,9 @@ class Patchscope(PatchscopeBase):
                 yield self._target_outputs[0][-1, :]
 
     def over_pairs(
-        self, source_layers: Sequence[int], target_layers: Sequence[int],
+        self,
+        source_layers: Sequence[int],
+        target_layers: Sequence[int],
     ) -> list[torch.Tensor]:
         """
         Run the patchscope over the specified set of layers in pairs

@@ -6,9 +6,8 @@ Implementation of some widely-known lenses in the Patchscope framework
 from __future__ import annotations
 
 import gc
-from pathlib import Path
-from typing import Optional
 from collections.abc import Sequence
+from pathlib import Path
 
 import numpy as np
 import torch
