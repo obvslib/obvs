@@ -50,3 +50,5 @@ pyrightconfig.json
 
 *.npy
 *.png
+*.html
+*.json
