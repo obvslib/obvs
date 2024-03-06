@@ -1,5 +1,6 @@
-from modal import Image, Stub, Secret
+from __future__ import annotations
 
+from modal import Image, Secret, Stub
 
 # Define the model names for LLaMA-2, Mistral, and GPT-2
 model_names = {
@@ -18,24 +19,20 @@ def download_model():
     Download the model and move the cache
     """
     import os
+
     token = os.environ["HUGGINGFACE_TOKEN"].strip()
     from huggingface_hub import snapshot_download
     from transformers.utils import move_cache
+
     snapshot_download(model_names["gemma7"], token=token, revision="main")
     snapshot_download(model_names["gemma2"], token=token, revision="main")
     move_cache()
 
 
 image = (
-    Image.from_registry(
-        "nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.11"
-    )
+    Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.11")
     .apt_install("git")
-    .apt_install("curl")
-    .pip_install(
-        "git+https://github.com/fergusfettes/obvs.git@modal",
-        "hf_transfer"
-    )
+    .pip_install("git+https://github.com/obvslib/obvs.git@modal", "hf_transfer")
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .run_function(
         download_model,

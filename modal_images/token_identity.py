@@ -1,29 +1,12 @@
 from __future__ import annotations
 
-import time
+from pathlib import Path
 
-import numpy as np
-import torch
-from tqdm import tqdm
+from modal import Secret, Stub, gpu, method
 
-from obvspython.vis import create_heatmap, plot_surprisal
-
-from modal import Stub, gpu, method
 from modal_images.gemma import image as gemma_image
 from modal_images.mistral import image as mistral_image
-
-
-# Define the model names for LLaMA-2, Mistral, and GPT-2
-model_names = {
-    "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
-    "llama": "meta-llama/Llama-2-13b-hf",
-    "gpt2": "gpt2",
-    "mamba": "MrGonao/delphi-mamba-100k",
-    "mistral": "mistralai/Mistral-7B-v0.1",         # Starts at 36GB but it grows over time, so either some optimization or a 80GB A100
-    "gptj": "EleutherAI/gpt-j-6B",
-    "gemma2": "google/gemma-2b",
-    "gemma7": "google/gemma-7b"             # Seems to be about 27GB? In which case it could run on a 40GB A100
-}
+from obvs.vis import create_heatmap, plot_surprisal
 
 images = {
     "gemma2": gemma_image,
@@ -33,113 +16,140 @@ images = {
 }
 
 
-stub = Stub(image=gemma_image, name="token_identity")
+model_names = {
+    "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
+    "llama": "meta-llama/Llama-2-13b-hf",
+    "gpt2": "gpt2",
+    "mamba": "MrGonao/delphi-mamba-100k",
+    "mistral": "mistralai/Mistral-7B-v0.1",
+    "gptj": "EleutherAI/gpt-j-6B",
+    "gemma2": "google/gemma-2b",
+    "gemma7": "google/gemma-7b",
+}
+
+
+stub = Stub(
+    image=gemma_image,
+    name="token_identity",
+    secrets=[Secret.from_name("my-huggingface-secret")],
+)
 
 
 @stub.cls(
-    gpu=gpu.A100(memory=40, count=1),
-    timeout=60 * 60 * 2,
+    # gpu=gpu.A100(memory=40, count=1),
+    # gpu=gpu.A10G(count=1),   # 24 GB
+    gpu=gpu.T4(count=1),  # 16 GB
+    # cpu=1,
+    timeout=60 * 30,
     container_idle_timeout=60 * 5,
 )
 class Runner:
-    def setup(self, prompt, model, word):
-        from obvspython.patchscope import Patchscope, SourceContext, TargetContext
+    def setup_ti(self, model_name):
+        from obvs.lenses import TokenIdentity
 
-        print("Starting Setup")
-
-        # Setup source and target context with the simplest configuration
-        source_context = SourceContext(
-            prompt=prompt,  # Example input text
-            model_name=model,  # Model name
-            position=-1,
-            device="cuda",
-        )
-
-        target_context = TargetContext.from_source(source_context)
-        target_context.prompt = (
-            "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
-        )
-        target_context.max_new_tokens = 1
-        self.patchscope = Patchscope(source=source_context, target=target_context)
-
-        try:
-            self.patchscope.source.position, target_tokens = self.patchscope.source_position_tokens(word)
-            self.patchscope.target.position, _ = self.patchscope.target_position_tokens("X")
-
-            assert (
-                self.patchscope.source_words[self.patchscope.source.position].strip() == word
-            ), self.patchscope.source_words[self.patchscope.source.position]
-            assert (
-                self.patchscope.target_words[self.patchscope.target.position].strip() == "X"
-            ), self.patchscope.target_words[self.patchscope.target.position]
-
-        except ValueError:
-            self.target_tokens = self.patchscope.tokenizer.encode(" boat", add_special_tokens=False)
-            self.patchscope.source.position = -1
-            self.patchscope.target.position = -1
-
-        self.values = np.zeros((self.patchscope.n_layers_source, self.patchscope.n_layers_target))
-
-        print("Setup complete")
+        self.ti = TokenIdentity("", model_name)
 
     @method()
-    def run(self, prompt, model, word):
-        self.setup(prompt, model, word)
-        print("Running")
-        source_layers = list(range(self.patchscope.n_layers))
-        target_layers = list(range(self.patchscope.n_layers))
-
-        outputs = self.patchscope.over_pairs(source_layers, target_layers)
-
-        outputs = self.patchscope.over(source_layers, target_layers)
-
-        print("Computing surprisal")
-        target_output = 0
-
-        # for i in source_layers:
-        #     # Get the output of the run
-        #     probs = torch.softmax(outputs[i][target_output], dim=-1)
-        #     self.values[i] = self.patchscope.compute_surprisal(probs[-1], self.target_tokens)
-
-        for i in source_layers:
-            for j in target_layers:
-                # Get the output of the run
-                probs = torch.softmax(outputs[i][j][target_output].value, dim=-1)
-                self.values[i, j] = self.patchscope.compute_surprisal(probs[-1], self.target_tokens)
-
-        print("Done")
-        print(type(self.values))
-        print(type(self.values[0]))
-        print(type(self.values[0][0]))
-        return source_layers, target_layers, self.values
+    def run(self, model_name, prompt, full):
+        if not hasattr(self, "ti"):
+            print("Setting up TokenIdentity")
+            self.setup_ti(model_name)
+        self.ti.patchscope.source.prompt = prompt
+        source_layers = range(self.ti.patchscope.n_layers_source)
+        target_layers = range(self.ti.patchscope.n_layers_target)
+        self.ti.run(
+            source_layers=source_layers,
+            target_layers=target_layers if full else None,
+        ).compute_surprisal()
+        return self.ti.surprisal, self.ti.source_layers
 
 
 @stub.local_entrypoint()
-def main(
-    word: str = "boat",
-    model: str = "gemma7",
-    prompt: str = "if its on the road, its a car. if its in the air, its a plane. if its on the sea, its a",
-):
-    print(f"Generating definition for word: {word} using model: {model}")
-    if model in model_names:
-        model = model_names[model]
+def main(model_name, n_samples=5, full=False):
+    n_samples = int(n_samples)
+    full = bool(full)
+    import os
 
-    model_name = model.replace("/", "-")
-    filename = f"{model_name}_{word}"
+    from datasets import load_dataset
 
-    start = time.time()
+    token = os.environ["HUGGINGFACE_TOKEN"].strip()
+    dataset = load_dataset(
+        "oscar-corpus/OSCAR-2201",
+        "en",
+        split="train",
+        streaming=True,
+        token=token,
+    )
+    shuffled_dataset = dataset.shuffle(seed=42, buffer_size=n_samples)
+
+    samples = []
+    for example in shuffled_dataset.take(n_samples):
+        samples.append(example["text"])
+
+    # Trim the samples to the first 300 characters
+    samples = [sample[:1000] for sample in samples]
+
+    # Make sure it ends on a space
+    samples = [sample[: sample.rfind(" ")] for sample in samples]
+
+    # Strip the spaces
+    samples = [sample.strip() for sample in samples]
+
+    filename = Path(f"{model_name}_surprisal_{n_samples}_full").expanduser()
+
+    surprisals = []
     runner = Runner()
-    source_layers, target_layers, values = runner.run.remote(prompt, model, word)
-    print(f"Elapsed time: {time.time() - start:.2f}s. Layers: {source_layers}, {target_layers}")
+    for prompt in samples:
+        try:
+            surprisal, layers = runner.run.remote(model_names[model_name], prompt, full)
+            surprisals.append(surprisal)
+            if full:
+                fig = create_heatmap(
+                    layers,
+                    layers,
+                    surprisal,
+                    title=f"{model_name} Surprisal of the first 1000 characters of a random sample from the OSCAR corpus",
+                )
+                fig.show()
+                fig.write_html(filename.with_suffix(".html"))
+            else:
+                fig = plot_surprisal(
+                    layers,
+                    surprisal,
+                    title=f"{model_name} Surprisal of the first 1000 characters of a random sample from the OSCAR corpus",
+                )
+                fig.show()
+                fig.write_html(filename.with_suffix(".html"))
+        except Exception as e:
+            print(e)
+            break
 
-    # Save the values to a file
-    np.save(f"scripts/{filename}.npy", values)
+    # Average the surprisals, calculate the standard deviation and plot with plotly
+    import numpy as np
 
-    # fig = plot_surprisal(source_layers, [value[0] for value in values], title=f"Token Identity: Surprisal by Layer {model_name}")
-    # fig.write_image(f"scripts/{filename}.png")
-    # fig.show()
+    if len(surprisals[0].shape) == 1:
+        # Its a single set of layers
+        mean_surprisal = np.mean(surprisals, axis=0)
+        std_surprisal = np.std(surprisals, axis=0)
 
-    fig = create_heatmap(source_layers, target_layers, values, title=f"Token Identity: Surprisal by Layer {model_name}")
-    # Save as png
-    fig.write_image(f"scripts/{filename}.png")
-    fig.show()
+        fig = plot_surprisal(
+            layers,
+            mean_surprisal,
+            std_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus",
+        )
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{n_samples}_samples.html")
+        fig.show()
+
+    elif len(surprisals[0].shape) == 2:
+        # Its a set of layers for each token, meaning a heatmap. We dont botther with the std
+        mean_surprisal = np.mean(surprisals, axis=0)
+
+        fig = create_heatmap(
+            layers,
+            layers,
+            mean_surprisal,
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus",
+        )
+        fig.write_html(f"mean_surprisal_heatmap_{model_name}_{n_samples}_samples.html")
+        fig.show()
