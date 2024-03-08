@@ -4,7 +4,7 @@ lenses.py
 Implementation of some widely-known lenses
 """
 
-from typing import List
+from typing import List, Tuple
 import torch
 from plotly.graph_objects import Figure
 from obvspython.logging import logger
@@ -42,6 +42,24 @@ class BaseLogitLens:
         # create Patchscope object
         self.patchscope = Patchscope(source_context, target_context)
         self.data = {}
+
+    def find_substring_in_prompt(self, substring: str) -> Tuple[int, List[int]]:
+        """ Find the substring in the source prompt and if it exists, return the starting position
+            and the tokenized substring
+        Args:
+             substring (str): The substring to find
+        Returns tuple(int, list(int)):
+              starting position and tokenized substring or None, None
+        """
+
+        # get the starting position of the substring in the prompt
+        try:
+            start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
+            return start_pos, substring_tokens
+        except ValueError:
+            logger.error('The substring "%s" could not be found in the prompt "%s"', substring,
+                         self.source.prompt)
+            return None, None
 
     def visualize(self, kind: str = 'top_logits_preds', file_name: str = '') -> Figure:
         """ Visualize the logit lens results in one of the following ways:
@@ -123,12 +141,8 @@ class PatchscopeLogitLens(BaseLogitLens):
             layers (List[int]): Indices of Transformer Layers for which the lens should be applied
         """
 
-        # get the starting position of the substring in the prompt
-        try:
-            start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
-        except ValueError:
-            logger.error('The substring "%s" could not be found in the prompt "%s"', substring,
-                         self.source.prompt)
+        start_pos, substring_tokens = self.find_substring_in_prompt(substring)
+        if not start_pos:
             return
 
         self.data['logits'] = {}
