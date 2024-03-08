@@ -7,7 +7,6 @@ Implementation of some widely-known lenses
 from typing import List
 import torch
 from plotly.graph_objects import Figure
-from obvspython.patchscope import ModelLoader
 from obvspython.logging import logger
 from obvspython.vis import create_annotated_heatmap
 from obvspython.patchscope import SourceContext, TargetContext, Patchscope
@@ -18,6 +17,31 @@ class BaseLogitLens:
         Patchscope and classic logit-lens are run differently,
         but share the same visualization.
      """
+
+    def __init__(self, model: str, prompt: str, device: str):
+        """ Constructor. Setup a Patchscope object with Source and Target context.
+            The target context is equal to the source context, apart from the layer.
+
+        Args:
+            model (str): Name of the model. Must be a valid name for huggingface transformers
+                package
+            prompt (str): The prompt to be analyzed
+            device (str): Device on which the model should be run: e.g. cpu, auto
+        """
+
+        self.model_name = model
+
+        # create SourceContext, leave position and layer as default for now
+        source_context = SourceContext(prompt=prompt, model_name=model, device=device)
+
+        # create TargetContext from SourceContext, as they are mostly equal
+        target_context = TargetContext.from_source(source_context)
+        # for the logit-lens, the target layer is always the last layer
+        target_context.layer = -1
+
+        # create Patchscope object
+        self.patchscope = Patchscope(source_context, target_context)
+        self.data = {}
 
     def visualize(self, kind: str = 'top_logits_preds', file_name: str = '') -> Figure:
         """ Visualize the logit lens results in one of the following ways:
@@ -90,31 +114,6 @@ class PatchscopeLogitLens(BaseLogitLens):
             applying unembed to it.
         """
 
-    def __init__(self, model: str, prompt: str, device: str):
-        """ Constructor. Setup a Patchscope object with Source and Target context.
-            The target context is equal to the source context, apart from the layer.
-
-        Args:
-            model (str): Name of the model. Must be a valid name for huggingface transformers
-                package
-            prompt (str): The prompt to be analyzed
-            device (str): Device on which the model should be run: e.g. cpu, auto
-        """
-
-        self.model_name = model
-
-        # create SourceContext, leave position and layer as default for now
-        source_context = SourceContext(prompt=prompt, model_name=model, device=device)
-
-        # create TargetContext from SourceContext, as they are mostly equal
-        target_context = TargetContext.from_source(source_context)
-        # for the logit-lens, the target layer is always the last layer
-        target_context.layer = -1
-
-        # create Patchscope object
-        self.patchscope = Patchscope(source_context, target_context)
-        self.data = {}
-
     def run(self, substring: str, layers: List[int]):
         """ Run the logit lens for each layer in layers and each token in substring.
 
@@ -153,20 +152,16 @@ class ClassicLogitLens(BaseLogitLens):
     """ Implementation of LogitLens in standard fashion.
         Run a forward pass on the model and multiply the output of a specific layer
         with the final layer norm and unembed to get the logits of that layer.
+        For convenience, use methods from the Patchscope class.
     """
 
-    def __init__(self, model: str, prompt: str, device: str):
-        """ Constructor. Setup a nnsight LanguageModel object
+    def run(self, substring: str, layers: List[int]):
+        """ Run the logit lens for each layer in layers and each token in substring.
 
         Args:
-            model (str): Name of the model. Must be a valid name for huggingface transformers
-                package
-            prompt (str): The prompt to be analyzed
-            device (str): Device on which the model should be run: e.g. cpu, auto
+            substring (str): Substring of the prompt for which the top prediction and logits
+                should be calculated.
+            layers (List[int]): Indices of Transformer Layers for which the lens should be applied
         """
 
-        self.model_name = model
-        self.prompt = prompt
-        self.device = device
-        self.model = ModelLoader.load(model, device_map=device)
-
+        pass
