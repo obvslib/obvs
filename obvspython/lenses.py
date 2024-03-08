@@ -13,7 +13,68 @@ from obvspython.vis import create_annotated_heatmap
 from obvspython.patchscope import SourceContext, TargetContext, Patchscope
 
 
-class PatchscopeLogitLens:
+class BaseLogitLens:
+    """ Parent class for LogitLenses.
+        Patchscope and classic logit-lens are run differently,
+        but share the same visualization.
+     """
+
+    def visualize(self, kind: str = 'top_logits_preds', file_name: str = '') -> Figure:
+        """ Visualize the logit lens results in one of the following ways:
+                top_logits_preds: Heatmap with the top predicted tokens and their logits
+        Args:
+              kind (str): The kind of visualization
+              file_name (str): If provided, save figure to a file with the given name
+                               (in the current path)
+        Returns (plotly.graph_objects.Figure):
+            The created figure
+        """
+
+        if not self.data:
+            logger.error('You need to call .run() before .visualize()!')
+            return Figure()
+
+        if kind == 'top_logits_preds':
+
+            logits = []
+            preds = []
+
+            # loop over all layers
+            for i, layer in enumerate(self.data['layers']):
+                layer_logits = []
+                layer_preds = []
+
+                # loop over every token in substring
+                for j in range(len(self.data['substring'])):
+
+                    # get the top prediction and logit
+                    top_logit, top_pred_idx = torch.max(
+                        self.data['logits'][(i, j)][self.data['start_pos'] + j], dim=0
+                    )
+                    # convert the top_pred_idx to a word
+                    top_pred = self.patchscope.tokenizer.decode(top_pred_idx)
+
+                    layer_logits.append(top_logit.item())
+                    layer_preds.append(top_pred)
+
+                logits.append(layer_logits)
+                preds.append(layer_preds)
+
+            x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
+                       for tok in self.data['substring']]
+            y_ticks = [f'{self.patchscope.MODEL_SOURCE}_{self.patchscope.LAYER_SOURCE}{i}'
+                       for i in self.data['layers']]
+
+            # create a heatmap with the top logits and predicted tokens
+            fig = create_annotated_heatmap(logits, preds, x_ticks, y_ticks,
+                                           title='Top predicted token and its logit')
+
+        if file_name:
+            fig.write_html(f'{file_name.replace(".html", "")}.html')
+        return fig
+
+
+class PatchscopeLogitLens(BaseLogitLens):
     """ Implementation of logit-lens in patchscope framework.
         The logit-lens is defined in the patchscope framework as follows:
         S = T   (source prompt = target prompt)
@@ -87,62 +148,8 @@ class PatchscopeLogitLens:
         self.data['layers'] = layers
         self.data['start_pos'] = start_pos
 
-    def visualize(self, kind: str = 'top_logits_preds', file_name: str = '') -> Figure:
-        """ Visualize the logit lens results in one of the following ways:
-                top_logits_preds: Heatmap with the top predicted tokens and their logits
-        Args:
-              kind (str): The kind of visualization
-              file_name (str): If provided, save figure to a file with the given name
-                               (in the current path)
-        Returns (plotly.graph_objects.Figure):
-            The created figure
-        """
 
-        if not self.data:
-            logger.error('You need to call .run() before .visualize()!')
-            return go.Figure()
-
-        if kind == 'top_logits_preds':
-
-            logits = []
-            preds = []
-
-            # loop over all layers
-            for i, layer in enumerate(self.data['layers']):
-                layer_logits = []
-                layer_preds = []
-
-                # loop over every token in substring
-                for j in range(len(self.data['substring'])):
-
-                    # get the top prediction and logit
-                    top_logit, top_pred_idx = torch.max(
-                        self.data['logits'][(i, j)][self.data['start_pos'] + j], dim=0
-                    )
-                    # convert the top_pred_idx to a word
-                    top_pred = self.patchscope.tokenizer.decode(top_pred_idx)
-
-                    layer_logits.append(top_logit.item())
-                    layer_preds.append(top_pred)
-
-                logits.append(layer_logits)
-                preds.append(layer_preds)
-
-            x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
-                       for tok in self.data['substring']]
-            y_ticks = [f'{self.patchscope.MODEL_SOURCE}_{self.patchscope.LAYER_SOURCE}{i}'
-                       for i in self.data['layers']]
-
-            # create a heatmap with the top logits and predicted tokens
-            fig = create_annotated_heatmap(logits, preds, x_ticks, y_ticks,
-                                           title='Top predicted token and its logit')
-
-        if file_name:
-            fig.write_html(f'{file_name.replace(".html", "")}.html')
-        return fig
-
-
-class LogitLens:
+class ClassicLogitLens(BaseLogitLens):
     """ Implementation of LogitLens in standard fashion.
         Run a forward pass on the model and multiply the output of a specific layer
         with the final layer norm and unembed to get the logits of that layer.
