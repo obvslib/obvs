@@ -7,6 +7,7 @@ Implementation of some widely-known lenses
 from typing import List
 import torch
 from plotly.graph_objects import Figure
+from obvspython.patchscope import ModelLoader
 from obvspython.logging import logger
 from obvspython.vis import create_annotated_heatmap
 from obvspython.patchscope import SourceContext, TargetContext, Patchscope
@@ -139,3 +140,26 @@ class PatchscopeLogitLens:
         if file_name:
             fig.write_html(f'{file_name.replace(".html", "")}.html')
         return fig
+
+
+class LogitLens:
+    """ Implementation of LogitLens in standard fashion.
+        Run a forward pass on the model and multiply the output of a specific layer
+        with the final layer norm and unembed to get the logits of that layer.
+    """
+
+    def __init__(self, model: str, prompt: str, device: str):
+        """ Constructor. Setup a nnsight LanguageModel object
+
+        Args:
+            model (str): Name of the model. Must be a valid name for huggingface transformers
+                package
+            prompt (str): The prompt to be analyzed
+            device (str): Device on which the model should be run: e.g. cpu, auto
+        """
+
+        self.model_name = model
+        self.prompt = prompt
+        self.device = device
+        self.model = ModelLoader.load(model, device_map=device)
+
