@@ -69,7 +69,7 @@ class BaseLogitLens:
                 layer_preds = []
 
                 # loop over every token in substring
-                for j in range(len(self.data['substring'])):
+                for j in range(len(self.data['substring_tokens'])):
 
                     # get the top prediction and logit
                     top_logit, top_pred_idx = torch.max(self.data['logits'][(i, j)], dim=0)
@@ -83,7 +83,7 @@ class BaseLogitLens:
                 preds.append(layer_preds)
 
             x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
-                       for tok in self.data['substring']]
+                       for tok in self.data['substring_tokens']]
             y_ticks = [f'{self.patchscope.MODEL_SOURCE}_{self.patchscope.LAYER_SOURCE}{i}'
                        for i in self.data['layers']]
 
@@ -126,7 +126,7 @@ class PatchscopeLogitLens(BaseLogitLens):
 
         self.data['logits'] = {}
 
-        # for each token in the substring,
+        # loop over each layer and token in substring
         for i, layer in enumerate(layers):
             for j in range(len(substring_tokens)):
 
@@ -136,7 +136,7 @@ class PatchscopeLogitLens(BaseLogitLens):
                 self.patchscope.run()
 
                 self.data['logits'][(i, j)] = self.patchscope.logits()[start_pos + j]
-        self.data['substring'] = substring_tokens
+        self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
 
 
