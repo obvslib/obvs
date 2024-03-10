@@ -364,10 +364,17 @@ class PatchscopeLogitLens(BaseLogitLens):
 
 
 class ClassicLogitLens(BaseLogitLens):
+<<<<<<< HEAD
     """Implementation of LogitLens in standard fashion.
     Run a forward pass on the model and apply the final layer norm and unembed to the output of
     a specific layer to get the logits of that layer.
     For convenience, use methods from the Patchscope class.
+=======
+    """ Implementation of LogitLens in standard fashion.
+        Run a forward pass on the model and apply the final layer norm and unembed to the output of
+        a specific layer to get the logits of that layer.
+        For convenience, use methods from the Patchscope class.
+>>>>>>> Change docstring of ClassicLogitLens clas
     """
 
     def run(self, substring: str, layers: list[int]):
