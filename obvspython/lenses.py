@@ -72,9 +72,7 @@ class BaseLogitLens:
                 for j in range(len(self.data['substring'])):
 
                     # get the top prediction and logit
-                    top_logit, top_pred_idx = torch.max(
-                        self.data['logits'][(i, j)][self.data['start_pos'] + j], dim=0
-                    )
+                    top_logit, top_pred_idx = torch.max(self.data['logits'][(i, j)], dim=0)
                     # convert the top_pred_idx to a word
                     top_pred = self.patchscope.tokenizer.decode(top_pred_idx)
 
@@ -137,10 +135,9 @@ class PatchscopeLogitLens(BaseLogitLens):
                 self.patchscope.target.position = start_pos + j
                 self.patchscope.run()
 
-                self.data['logits'][(i, j)] = self.patchscope.logits()
+                self.data['logits'][(i, j)] = self.patchscope.logits()[start_pos + j]
         self.data['substring'] = substring_tokens
         self.data['layers'] = layers
-        self.data['start_pos'] = start_pos
 
 
 class ClassicLogitLens(BaseLogitLens):
