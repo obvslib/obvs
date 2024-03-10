@@ -156,4 +156,28 @@ class ClassicLogitLens(BaseLogitLens):
             layers (List[int]): Indices of Transformer Layers for which the lens should be applied
         """
 
-        pass
+        # get starting position and tokens of substring
+        start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
+
+        # loop over all layers
+        for i, layer in enumerate(layers):
+
+            # with one forward pass, we can get the logits of every position
+            with self.patchscope.source_model.trace(self.patchscope.source.prompt) as _:
+
+                # get the appropriate sub-module and block from source_model
+                sub_mod = getattr(self.patchscope.source_model, self.patchscope.MODEL_SOURCE)
+                block = getattr(sub_mod, self.patchscope.LAYER_SOURCE)
+
+                # get hidden state after specified layer
+                hidden = block[layer].output[0]
+
+                # apply final layer norm and unembedding to hidden state
+                ln_f_out = sub_mod.ln_f(hidden)
+                logits = self.patchscope.source_model.lm_head(ln_f_out).save()
+
+            # loop over all tokens in substring and get the corresponding logits
+            for j in range(len(substring_tokens)):
+                self.data['logits'][(i, j)] = logits[:, start_pos + j, :]
+        self.data['substring_tokens'] = substring_tokens
+        self.data['layers'] = layers
