@@ -37,7 +37,7 @@ substring = "Specifically, we train GPT-3, an autoregressive language model with
 layers = list(range(0, 12))
 
 # models: gpt2 125m, gpt2 1B, gpt-neo 125m
-for model_name in ['gpt2', 'gpt2-xl', 'EleutherAI/gpt-neo-125M']:
+for model_name in ['gpt2', 'EleutherAI/gpt-neo-125M', 'gpt2-xl']:
 
     # run on both, classic and Patschcope logit lens
     for ll_type, ll_class in [('patchscope_logit_lens', PatchscopeLogitLens),
