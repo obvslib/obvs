@@ -135,7 +135,10 @@ class PatchscopeLogitLens(BaseLogitLens):
                 self.patchscope.target.position = start_pos + j
                 self.patchscope.run()
 
-                self.data['logits'][(i, j)] = self.patchscope.logits()[start_pos + j]
+                self.data['logits'][(i, j)] = self.patchscope.logits()[start_pos + j].to('cpu')
+
+            # empty CDUA cache to avoid filling of GPU memory
+            torch.cuda.empty_cache()
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
 
@@ -180,6 +183,9 @@ class ClassicLogitLens(BaseLogitLens):
 
             # loop over all tokens in substring and get the corresponding logits
             for j in range(len(substring_tokens)):
-                self.data['logits'][(i, j)] = logits[0, start_pos + j, :]
+                self.data['logits'][(i, j)] = logits[0, start_pos + j, :].to('cpu')
+
+            # empty CDUA cache to avoid filling of GPU memory
+            torch.cuda.empty_cache()
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
