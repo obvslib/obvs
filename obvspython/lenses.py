@@ -180,6 +180,6 @@ class ClassicLogitLens(BaseLogitLens):
 
             # loop over all tokens in substring and get the corresponding logits
             for j in range(len(substring_tokens)):
-                self.data['logits'][(i, j)] = logits[:, start_pos + j, :]
+                self.data['logits'][(i, j)] = logits[0, start_pos + j, :]
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
