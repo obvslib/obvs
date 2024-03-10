@@ -159,6 +159,8 @@ class ClassicLogitLens(BaseLogitLens):
         # get starting position and tokens of substring
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
+        self.data['logits'] = {}
+
         # loop over all layers
         for i, layer in enumerate(layers):
 
