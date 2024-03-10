@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from obvspython.patchscope import Patchscope, SourceContext, TargetContext
+from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
 class TestContext:
@@ -59,6 +59,18 @@ class TestPatchscope:
         patchscope._source_hidden_state = tensor
         patchscope.map()
         assert patchscope._mapped_hidden_state.equal(tensor)
+
+    @staticmethod
+    def test_patchscope_map_transpose():
+        source = SourceContext("source")
+        target = TargetContext("target")
+        target.mapping_function = lambda x: torch.transpose(x, 0, 1)
+        patchscope = Patchscope(source, target)
+
+        tensor = torch.tensor(np.random.rand(3, 3))
+        patchscope._source_hidden_state = tensor
+        patchscope.map()
+        assert patchscope._mapped_hidden_state.equal(tensor.T)
 
     @staticmethod
     def test_source_tokens(patchscope):
