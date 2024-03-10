@@ -4,12 +4,12 @@ lenses.py
 Implementation of some widely-known lenses
 """
 
-from typing import List, Tuple
+from typing import List
 import torch
 from plotly.graph_objects import Figure
-from obvspython.logging import logger
-from obvspython.vis import create_annotated_heatmap
-from obvspython.patchscope import SourceContext, TargetContext, Patchscope
+from obvs.logging import logger
+from obvs.vis import create_annotated_heatmap
+from obvs.patchscope import SourceContext, TargetContext, Patchscope
 
 
 class BaseLogitLens:

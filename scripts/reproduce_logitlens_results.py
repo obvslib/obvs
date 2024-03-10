@@ -9,7 +9,7 @@ https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-len
 )
 """
 
-from obvspython.lenses import ClassicLogitLens, PatchscopeLogitLens
+from obvs.lenses import ClassicLogitLens, PatchscopeLogitLens
 
 prompt = """Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training
 on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic
