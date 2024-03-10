@@ -37,6 +37,7 @@ from dataclasses import dataclass
 
 import torch
 from nnsight import LanguageModel
+from tqdm import tqdm
 
 from obvs.logging import logger
 from obvs.patchscope_base import PatchscopeBase
@@ -52,7 +53,7 @@ class SourceContext:
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
-    device: str = "cuda:0"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __repr__(self) -> str:
         return (
@@ -159,6 +160,7 @@ class Patchscope(PatchscopeBase):
         """
         with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
             self._source_hidden_state = self.manipulate_source().save()
+            self.source_output = self.source_model.lm_head.output[0].save()
 
     def manipulate_source(self) -> torch.Tensor:
         """
@@ -208,7 +210,67 @@ class Patchscope(PatchscopeBase):
         """
         Run the patchscope
         """
-        self._target_outputs = []
+        self.clear()
         self.source_forward_pass()
         self.map()
         self.target_forward_pass()
+
+    def clear(self) -> None:
+        """
+        Clear the outputs and the cache
+        """
+        self._target_outputs = []
+        if hasattr(self, "source_output"):
+            del self.source_output
+        if hasattr(self, "_source_hidden_state"):
+            del self._source_hidden_state
+        if hasattr(self, "_mapped_hidden_state"):
+            del self._mapped_hidden_state
+        torch.cuda.empty_cache()
+
+    def over(
+        self,
+        source_layers: Sequence[int],
+        target_layers: Sequence[int],
+    ) -> list[torch.Tensor]:
+        """
+        Run the patchscope over the specified set of layers.
+
+        :param source_layers: A list of layer indices or a range of layer indices.
+        :param target_layers: A list of layer indices or a range of layer indices.
+        :return: A source_layers x target_layers x max_new_tokens list of outputs.
+        """
+        logger.info("Running sets.")
+        for i in source_layers:
+            self.source.layer = i
+            for j in target_layers:
+                self.target.layer = j
+                logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
+                self.run()
+                logger.info(self.full_output())
+                logger.info("Saving last token outputs")
+                # Output sizes are too large. For now, we only need the last character of the first output.
+                yield self._target_outputs[0][-1, :]
+
+    def over_pairs(
+        self,
+        source_layers: Sequence[int],
+        target_layers: Sequence[int],
+    ) -> list[torch.Tensor]:
+        """
+        Run the patchscope over the specified set of layers in pairs
+        :param source_layers: A list of layer indices or a range of layer indices.
+        :param target_layers: A list of layer indices or a range of layer indices.
+        :return: A source_layers x target_layers x max_new_tokens list of outputs.
+        """
+        logger.info("Running pairs.")
+        for i, j in tqdm(zip(source_layers, target_layers)):
+            self.source.layer = i
+            self.target.layer = j
+            logger.info(f"Running Source Layer-{i}, Target Layer-{j}")
+            self.run()
+            logger.info(self.full_output())
+            logger.info("Saving last token outputs")
+            # Output sizes are too large. For now, we only need the last character of the first output.
+            logger.info(self._target_outputs[0].shape)
+            yield self._target_outputs[0][-1, :]

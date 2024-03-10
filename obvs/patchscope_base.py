@@ -235,6 +235,9 @@ class PatchscopeBase(ABC):
         Returns:
         - surprisal: Surprisal metric result.
         """
+        # For now, just compute the surprisal of the first element. We'll need to improve this.
+        if isinstance(true_token_index, list):
+            true_token_index = true_token_index[0]
         # To avoid log(0) issues, add a small constant to the probabilities
         estimated_probs = torch.clamp(estimated_probs, min=1e-12)
         surprisal = -torch.log(estimated_probs[true_token_index])

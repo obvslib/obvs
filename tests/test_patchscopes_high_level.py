@@ -151,6 +151,29 @@ class TestPatchscope:
         assert "a rat is a cat" in patchscope.full_output()
 
     @staticmethod
+    def test_multi_token_generation_with_different_lengths_single_patch(patchscope):
+        """
+        And the patch works with multi-token generation across subsequent tokens
+        """
+        patchscope.source.prompt = "frog"
+        patchscope.target.prompt = "a dog is a dog. a bat is a bat. a rat"
+        patchscope.source.position = -1
+        patchscope.target.position = -1
+        patchscope.target.max_new_tokens = 4
+        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
+            patchscope.target.model_name,
+            4,
+        )
+
+        patchscope.source.layer = 3
+        patchscope.target.layer = 3
+
+        patchscope.run()
+
+        # Assert the target has been patched to think a rat is a cat
+        assert "cat" in patchscope.full_output()
+
+    @staticmethod
     def test_token_identity_prompt_early(patchscope):
         """
         This is the same as the last setup, but we use a more natural set of prompts.
@@ -215,3 +238,28 @@ class TestPatchscope:
 
         # Assert the target has been patched to think about a cat
         assert "cat" in patchscope.full_output()
+
+    @staticmethod
+    def test_over(patchscope):
+        """
+        Test the over method
+        """
+        patchscope.source.prompt = "a dog is a dog. a rat is a rat. a cat"
+        patchscope.target.prompt = "a dog is a dog. a bat is a bat. a rat"
+        patchscope.source.position = None
+        patchscope.target.position = None
+        patchscope.init_positions()
+        patchscope.target.max_new_tokens = 2
+        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
+            patchscope.target.model_name,
+            2,
+        )
+        values = list(patchscope.over(range(2), range(4)))
+        # Its a layer x layer list
+        assert len(values) == 8
+        # With the outputs of two generations
+        assert len(values[0]) == 2
+        # The first of which is the length of the target tokens
+        assert values[0][0].shape[0] == len(patchscope.target_tokens)
+        # And the second has length 1
+        assert values[0][1].shape[0] == 1
