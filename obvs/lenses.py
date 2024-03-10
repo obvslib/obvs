@@ -356,8 +356,8 @@ class PatchscopeLogitLens(BaseLogitLens):
 
 class ClassicLogitLens(BaseLogitLens):
     """ Implementation of LogitLens in standard fashion.
-        Run a forward pass on the model and multiply the output of a specific layer
-        with the final layer norm and unembed to get the logits of that layer.
+        Run a forward pass on the model and apply the final layer norm and unembed to the output of
+        a specific layer to get the logits of that layer.
         For convenience, use methods from the Patchscope class.
     """
 
