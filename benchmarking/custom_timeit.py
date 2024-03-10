@@ -7,8 +7,10 @@ from functions that are being timed
 """
 
 
-import timeit
+from __future__ import annotations
+
 import statistics
+import timeit
 
 timeit.template = """
 def inner(_it, _timer{init}):
@@ -22,8 +24,8 @@ def inner(_it, _timer{init}):
 
 
 def custom_timeit(func, n_repeat, n_loop, *args):
-    """ Custom timeit, run func in a loop n_loop times and repeat for n_repeat times.
-        Return the output of the function, the mean and std of the runtimes"""
+    """Custom timeit, run func in a loop n_loop times and repeat for n_repeat times.
+    Return the output of the function, the mean and std of the runtimes"""
 
     runtimes = []
     return_values = []

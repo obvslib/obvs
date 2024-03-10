@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import transformer_lens
 
 llama = "nickypro/tinyllama-110M"
