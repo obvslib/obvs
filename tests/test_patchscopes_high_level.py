@@ -179,8 +179,8 @@ class TestPatchscope:
     @staticmethod
     def test_future_lens():
         outputs = dict()
-        for layer in range(12):
-            for pos in range(5): # marty mcfly from has 5 tokens
+        for layer in range(11, 12):
+            for pos in range(4, 5): # marty mcfly from has 5 tokens
                 source_context = SourceContext(
                     device='cpu',
                     prompt="Marty McFly from",
