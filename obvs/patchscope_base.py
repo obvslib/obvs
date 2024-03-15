@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
 
 import torch
 
@@ -39,75 +38,75 @@ class PatchscopeBase(ABC):
         pass
 
     @property
-    def source_tokens(self) -> List[int]:
+    def source_token_ids(self) -> list[int]:
         """
         Return the source tokens
         """
-        print(self.source.prompt)
         return self.tokenizer.encode(self.source.prompt)
 
     @property
-    def target_tokens(self) -> List[int]:
+    def target_token_ids(self) -> list[int]:
         """
         Return the target tokens
         """
         return self.tokenizer.encode(self.target.prompt)
 
     @property
-    def source_words(self):
+    def source_tokens(self) -> list[str]:
         """
         Return the input to the source model
         """
-        return [self.tokenizer.decode(token) for token in self.source_tokens]
+        return [self.tokenizer.decode(token) for token in self.source_token_ids]
 
     @property
-    def target_words(self):
+    def target_tokens(self) -> list[str]:
         """
         Return the input to the target model
         """
-        return [self.tokenizer.decode(token) for token in self.target_tokens]
+        return [self.tokenizer.decode(token) for token in self.target_token_ids]
 
-    def init_positions(self, force=False):
-        if self.source.position is None or force:
+    def init_positions(self) -> None:
+        if self.source.position is None:
             # If no position is specified, take them all
-            self.source.position = range(len(self.source_tokens))
+            self.source.position = range(len(self.source_token_ids))
 
-        if self.target.position is None or force:
-            self.target.position = range(len(self.target_tokens))
+        if self.target.position is None:
+            self.target.position = range(len(self.target_token_ids))
 
-    def top_k_tokens(self, k=10):
+    def top_k_tokens(self, k: int=10) -> list[str]:
         """
         Return the top k tokens from the target model
         """
-        tokens = self._target_outputs[0].value[self.target.position, :].topk(k).indices.tolist()
-        return [self.tokenizer.decode(token) for token in tokens]
+        token_ids = self._target_outputs[0].value[self.target.position, :].topk(k).indices.tolist()
+        return [self.tokenizer.decode(token_id) for token_id in token_ids]
 
-    def top_k_logits(self, k=10):
+    def top_k_logits(self, k: int=10) -> list[int]:
         """
         Return the top k logits from the target model
         """
         return self._target_outputs[0].value[self.target.position, :].topk(k).values.tolist()
 
-    def top_k_probs(self, k=10):
+    def top_k_probs(self, k: int=10) -> list[float]:
         """
         Return the top k probabilities from the target model
         """
+        # FIXME: broken, returns a list of [1.0]
         logits = self.top_k_logits(k)
         return [torch.nn.functional.softmax(torch.tensor(logit), dim=-1).item() for logit in logits]
 
-    def logits(self):
+    def logits(self) -> torch.Tensor:
         """
-        Return the logits from the target model
+        Return the logits from the target model (size [pos, d_vocab])
         """
         return self._target_outputs[0].value[:, :]
 
-    def probabilities(self):
+    def probabilities(self) -> torch.Tensor:
         """
-        Return the probabilities from the target model
+        Return the probabilities from the target model (size [pos, d_vocab])
         """
         return torch.softmax(self.logits(), dim=-1)
 
-    def output(self):
+    def output(self) -> list[str]:
         """
         Return the generated output from the target model
         """
@@ -168,10 +167,10 @@ class PatchscopeBase(ABC):
                              f'"{self.source.prompt}"')
         try:
             tokens = self.tokenizer.encode(substring, add_special_tokens=False)
-            return self.source_tokens.index(tokens[0]), tokens
+            return self.source_token_ids.index(tokens[0]), tokens
         except ValueError:
             tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
-            return self.source_tokens.index(tokens[0]), tokens
+            return self.source_token_ids.index(tokens[0]), tokens
 
     def find_in_target(self, substring):
         """
@@ -195,10 +194,10 @@ class PatchscopeBase(ABC):
                              f'"{self.source.prompt}"')
         try:
             tokens = self.tokenizer.encode(substring, add_special_tokens=False)
-            return self.target_tokens.index(tokens[0]), tokens
+            return self.target_token_ids.index(tokens[0]), tokens
         except ValueError:
             tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
-            return self.target_tokens.index(tokens[0]), tokens
+            return self.target_token_ids.index(tokens[0]), tokens
 
     @property
     def n_layers(self):
