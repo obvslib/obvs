@@ -65,12 +65,12 @@ class PatchscopeBase(ABC):
         """
         return [self.tokenizer.decode(token) for token in self.target_token_ids]
 
-    def init_positions(self) -> None:
-        if self.source.position is None:
+    def init_positions(self, force: bool=False) -> None:
+        if self.source.position is None or force:
             # If no position is specified, take them all
             self.source.position = range(len(self.source_token_ids))
 
-        if self.target.position is None:
+        if self.target.position is None or force:
             self.target.position = range(len(self.target_token_ids))
 
     def top_k_tokens(self, k: int=10) -> list[str]:

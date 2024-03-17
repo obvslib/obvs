@@ -101,7 +101,7 @@ class TestPatchscope:
     @staticmethod
     def test_source_tokens(patchscope):
         patchscope.source.prompt = "a dog is a dog. a cat is a"
-        assert patchscope.source_tokens == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
+        assert patchscope.source_token_ids == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
 
     @staticmethod
     def test_source_forward_pass_creates_hidden_state(patchscope):
