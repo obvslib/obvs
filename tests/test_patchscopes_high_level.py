@@ -31,7 +31,7 @@ class TestPatchscope:
     @staticmethod
     def test_equal_full_patch_all_layers(patchscope):
         """
-        This should work actoss all layers
+        This should work across all layers
         """
         patchscope.source.prompt = "a dog is a dog. a cat is a"
         patchscope.target.prompt = "a dog is a dog. a rat is a"
@@ -39,7 +39,11 @@ class TestPatchscope:
         patchscope.init_positions()
 
         for i in range(patchscope.n_layers):
+            patchscope.source.level = i
+            patchscope.target.level = i
+
             patchscope.run()
+
             output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
             decoded = patchscope.tokenizer.decode(output)
 
