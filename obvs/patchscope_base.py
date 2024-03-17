@@ -42,14 +42,14 @@ class PatchscopeBase(ABC):
         """
         Return the source tokens
         """
-        return self.tokenizer.encode(self.source.prompt)
+        return self.tokenizer.encode(self.source.text_prompt)
 
     @property
     def target_token_ids(self) -> list[int]:
         """
         Return the target tokens
         """
-        return self.tokenizer.encode(self.target.prompt)
+        return self.tokenizer.encode(self.target.text_prompt)
 
     @property
     def source_tokens(self) -> list[str]:
@@ -132,7 +132,7 @@ class PatchscopeBase(ABC):
         """
         token_ids = self._output_token_ids()
 
-        input_token_ids = self.tokenizer.encode(self.target.prompt)
+        input_token_ids = self.tokenizer.encode(self.target.text_prompt)
         token_ids.insert(0, " ")
         token_ids[: len(input_token_ids)] = input_token_ids
         return [self.tokenizer.decode(token_id) for token_id in token_ids]
@@ -164,9 +164,8 @@ class PatchscopeBase(ABC):
         few subtleties there, and tokenizing properly is important for getting
         the best out of your model.
         """
-        if substring not in self.source.prompt:
-            raise ValueError(f'Substring "{substring}" could not be found in prompt '
-                             f'"{self.source.prompt}"')
+        if substring not in self.source.text_prompt:
+            raise ValueError(f"{substring} not in {self.source.text_prompt}")
 
         try:
             token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
@@ -194,9 +193,9 @@ class PatchscopeBase(ABC):
         few subtleties there, and tokenizing properly is important for getting
         the best out of your model.
         """
-        if substring not in self.target.prompt:
-            raise ValueError(f'Substring "{substring}" could not be found in prompt '
-                             f'"{self.source.prompt}"')
+        if substring not in self.target.text_prompt:
+            raise ValueError(f"{substring} not in {self.target.text_prompt}")
+
         try:
             token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
             return self.target_token_ids.index(token_ids[0]), token_ids

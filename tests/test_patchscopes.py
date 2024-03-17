@@ -8,7 +8,7 @@ from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
 class TestContext:
-    STUB_EMBEDDING = torch.ones((1, 2))
+    STUB_SOFT_PROMPT = torch.ones((1, 2))
 
     @staticmethod
     def test_source_context_init():
@@ -34,28 +34,14 @@ class TestContext:
         assert target.mapping_function(1) == 2
         assert target.mapping_function(tensor).equal(tensor + 1)
 
-    def test_can_only_have_prompt_or_embedding(self):
-        with pytest.raises(ValueError):
-            SourceContext(prompt="foo", soft_prompt=self.STUB_EMBEDDING)
+    def test_soft_prompt_dimensions_must_be_two(self):
+        SourceContext(prompt=self.STUB_SOFT_PROMPT)
 
         with pytest.raises(ValueError):
-            TargetContext(prompt="foo", soft_prompt=self.STUB_EMBEDDING)
-
-        # Should not throw exceptions
-        SourceContext(prompt="foo")
-        TargetContext(prompt="foo")
-
-        SourceContext(soft_prompt=self.STUB_EMBEDDING)
-        TargetContext(soft_prompt=self.STUB_EMBEDDING)
-
-    def test_embedding_dimensions_must_be_two(self):
-        SourceContext(soft_prompt=self.STUB_EMBEDDING)
+            SourceContext(prompt=torch.ones((1,)))
 
         with pytest.raises(ValueError):
-            SourceContext(soft_prompt=torch.ones((1,)))
-
-        with pytest.raises(ValueError):
-            SourceContext(soft_prompt=torch.ones((1,2,3)))
+            SourceContext(prompt=torch.ones((1,2,3)))
 
 
 class TestPatchscope:

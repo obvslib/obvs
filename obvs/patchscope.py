@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from functools import cached_property
 
 import torch
 from nnsight import LanguageModel
@@ -48,35 +49,42 @@ class SourceContext:
     """
     Source context for the patchscope
     """
-
-    prompt: str | None = None
-    soft_prompt: torch.Tensor | None = None # aka token embeddings. size: [pos, dmodel]
-
+    # Either text prompt or a soft prompt (aka token embeddings of size [pos, dmodel])
+    prompt: str | torch.Tensor | None = None
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __post_init__(self) -> None:
-        if self.prompt is None and self.soft_prompt is None:
+        if self.prompt is None:
             self.prompt = "<|endoftext|>"
 
-        if self.prompt is not None and self.soft_prompt is not None:
-            raise ValueError("Can only provide prompt or soft_prompt, not both.")
+        if self._is_soft_prompt() and self.prompt.dim() != 2:
+            raise ValueError(f"soft prompt must have shape [pos, dmodel]. prompt.shape = {self.prompt.shape}")
 
-        if self.soft_prompt is not None:
-            if self.soft_prompt.dim() != 2:
-                raise ValueError(f"soft_prompt must have shape [pos, dmodel]. soft_prompt.shape = {self.soft_prompt.shape}")
-
-            self.prompt = self._create_stub_prompt(self.soft_prompt.shape[0])
-
-    def _create_stub_prompt(self, token_count: int) -> str:
+    @cached_property
+    def text_prompt(self) -> str:
         """
-        Create a prompt with exactly `token_count` tokens
+        The text prompt input or generated from soft prompt
         """
+        if self._is_soft_prompt():
+            tokens_count = self.prompt.shape[0]
 
-        # Works with GPT2 & GPTJ, not sure about other models
-        return " ".join("_" * token_count)
+            # Works with GPT2 & GPTJ, not sure about other models
+            return " ".join("_" * tokens_count)
+
+        return self.prompt
+
+    @cached_property
+    def soft_prompt(self) -> torch.Tensor | None:
+        """
+        The soft prompt input or None
+        """
+        return self.prompt if self._is_soft_prompt() else None
+
+    def _is_soft_prompt(self) -> bool:
+        return isinstance(self.prompt, torch.Tensor)
 
 
 
@@ -99,7 +107,6 @@ class TargetContext(SourceContext):
     ) -> TargetContext:
         return TargetContext(
             prompt=source.prompt,
-            soft_prompt=source.soft_prompt,
             position=source.position,
             model_name=source.model_name,
             layer=source.layer,
@@ -169,9 +176,9 @@ class Patchscope(PatchscopeBase):
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
+        with self.source_model.trace(self.source.text_prompt, remote=self.REMOTE) as _:
             if self.source.soft_prompt is not None:
-                # Not sure if this works with mamba and other models
+                # TODO: validate this with non GPT2 & GPTJ models
                 self.source_model.transformer.wte.output = self.source.soft_prompt
 
             self._source_hidden_state = self.manipulate_source().save()
@@ -204,7 +211,7 @@ class Patchscope(PatchscopeBase):
         For each architecture, you need to know the name of the layers.
         """
         with self.target_model.generate(
-            self.target.prompt,
+            self.target.text_prompt,
             remote=self.REMOTE,
             **self.generation_kwargs,
         ) as _:
