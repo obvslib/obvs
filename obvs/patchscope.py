@@ -59,6 +59,7 @@ class SourceContext:
         if self.prompt is None:
             self.prompt = "<|endoftext|>"
 
+        # TODO: validation doesn't work after initialization. Maybe create a descriptor
         if self._is_soft_prompt() and self.prompt.dim() != 2:
             raise ValueError(f"soft prompt must have shape [pos, dmodel]. prompt.shape = {self.prompt.shape}")
 
