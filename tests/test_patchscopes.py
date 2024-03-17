@@ -36,26 +36,26 @@ class TestContext:
 
     def test_can_only_have_prompt_or_embedding(self):
         with pytest.raises(ValueError):
-            SourceContext(prompt="foo", embedding=self.STUB_EMBEDDING)
+            SourceContext(prompt="foo", soft_prompt=self.STUB_EMBEDDING)
 
         with pytest.raises(ValueError):
-            TargetContext(prompt="foo", embedding=self.STUB_EMBEDDING)
+            TargetContext(prompt="foo", soft_prompt=self.STUB_EMBEDDING)
 
         # Should not throw exceptions
         SourceContext(prompt="foo")
         TargetContext(prompt="foo")
 
-        SourceContext(embedding=self.STUB_EMBEDDING)
-        TargetContext(embedding=self.STUB_EMBEDDING)
+        SourceContext(soft_prompt=self.STUB_EMBEDDING)
+        TargetContext(soft_prompt=self.STUB_EMBEDDING)
 
     def test_embedding_dimensions_must_be_two(self):
-        SourceContext(embedding=self.STUB_EMBEDDING)
+        SourceContext(soft_prompt=self.STUB_EMBEDDING)
 
         with pytest.raises(ValueError):
-            SourceContext(embedding=torch.ones((1,)))
+            SourceContext(soft_prompt=torch.ones((1,)))
 
         with pytest.raises(ValueError):
-            SourceContext(embedding=torch.ones((1,2,3)))
+            SourceContext(soft_prompt=torch.ones((1,2,3)))
 
 
 class TestPatchscope:

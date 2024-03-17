@@ -49,8 +49,8 @@ class SourceContext:
     Source context for the patchscope
     """
 
-    prompt: Sequence[str] | None = None
-    embedding: torch.Tensor | None = None # [pos, dmodel]
+    prompt: str | None = None
+    soft_prompt: torch.Tensor | None = None # aka token embeddings. size: [pos, dmodel]
 
     position: Sequence[int] | None = None
     layer: int = -1
@@ -58,17 +58,17 @@ class SourceContext:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __post_init__(self) -> None:
-        if self.prompt is None and self.embedding is None:
+        if self.prompt is None and self.soft_prompt is None:
             self.prompt = "<|endoftext|>"
 
-        if self.prompt is not None and self.embedding is not None:
-            raise ValueError("Can only provide prompt or embedding, not both.")
+        if self.prompt is not None and self.soft_prompt is not None:
+            raise ValueError("Can only provide prompt or soft_prompt, not both.")
 
-        if self.embedding is not None:
-            if self.embedding.dim() != 2:
-                raise ValueError(f"embedding must have shape [pos, dmodel]. embedding.shape = {self.embedding.shape}")
+        if self.soft_prompt is not None:
+            if self.soft_prompt.dim() != 2:
+                raise ValueError(f"soft_prompt must have shape [pos, dmodel]. soft_prompt.shape = {self.soft_prompt.shape}")
 
-            self.prompt = self._create_stub_prompt(self.embedding.shape[0])
+            self.prompt = self._create_stub_prompt(self.soft_prompt.shape[0])
 
     def _create_stub_prompt(self, token_count: int) -> str:
         """
@@ -99,7 +99,7 @@ class TargetContext(SourceContext):
     ) -> TargetContext:
         return TargetContext(
             prompt=source.prompt,
-            embedding=source.embedding,
+            soft_prompt=source.soft_prompt,
             position=source.position,
             model_name=source.model_name,
             layer=source.layer,
@@ -170,9 +170,9 @@ class Patchscope(PatchscopeBase):
         For each architecture, you need to know the name of the layers.
         """
         with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
-            if self.source.embedding is not None:
+            if self.source.soft_prompt is not None:
                 # Not sure if this works with mamba and other models
-                self.source_model.transformer.wte.output = self.source.embedding
+                self.source_model.transformer.wte.output = self.source.soft_prompt
 
             self._source_hidden_state = self.manipulate_source().save()
             self.source_output = self.source_model.lm_head.output[0].save()
@@ -208,9 +208,9 @@ class Patchscope(PatchscopeBase):
             remote=self.REMOTE,
             **self.generation_kwargs,
         ) as _:
-            if self.target.embedding is not None:
+            if self.target.soft_prompt is not None:
                 # Not sure if this works with mamba and other models
-                self.target_model.transformer.wte.output = self.source.embedding
+                self.target_model.transformer.wte.output = self.source.soft_prompt
 
             self.manipulate_target()
 

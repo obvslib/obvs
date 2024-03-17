@@ -191,7 +191,7 @@ class TestPatchscope:
 
                 target_context = TargetContext(
                     device='cpu',
-                    embedding=torch.load('/Users/vy/workplace/obvslib/data/processed/gpt2_jum_henson.pt'),
+                    soft_prompt=torch.load('/Users/vy/workplace/obvslib/data/processed/gpt2_jum_henson.pt'),
                     model_name='gpt2',
                     max_new_tokens=3,
                     position=-1,
