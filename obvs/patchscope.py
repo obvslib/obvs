@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from functools import cached_property
 
 import torch
 from nnsight import LanguageModel
@@ -63,7 +62,7 @@ class SourceContext:
         if self._is_soft_prompt() and self.prompt.dim() != 2:
             raise ValueError(f"soft prompt must have shape [pos, dmodel]. prompt.shape = {self.prompt.shape}")
 
-    @cached_property
+    @property
     def text_prompt(self) -> str:
         """
         The text prompt input or generated from soft prompt
@@ -76,7 +75,7 @@ class SourceContext:
 
         return self.prompt
 
-    @cached_property
+    @property
     def soft_prompt(self) -> torch.Tensor | None:
         """
         The soft prompt input or None
