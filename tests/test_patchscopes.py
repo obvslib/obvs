@@ -7,8 +7,9 @@ import torch
 from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
+STUB_SOFT_PROMPT = torch.ones((1, 2))
+
 class TestContext:
-    STUB_SOFT_PROMPT = torch.ones((1, 2))
 
     @staticmethod
     def test_source_context_init():
@@ -34,14 +35,16 @@ class TestContext:
         assert target.mapping_function(1) == 2
         assert target.mapping_function(tensor).equal(tensor + 1)
 
-    def test_soft_prompt_dimensions_must_be_two(self):
-        SourceContext(prompt=self.STUB_SOFT_PROMPT)
+    @staticmethod
+    def test_soft_prompt_dimensions_must_be_two():
+        SourceContext(prompt=STUB_SOFT_PROMPT)
 
         with pytest.raises(ValueError):
             SourceContext(prompt=torch.ones((1,)))
 
         with pytest.raises(ValueError):
             SourceContext(prompt=torch.ones((1,2,3)))
+
 
 
 class TestPatchscope:
@@ -85,41 +88,33 @@ class TestPatchscope:
         assert patchscope._mapped_hidden_state.equal(tensor.T)
 
     @staticmethod
-    def test_source_tokens():
-        source_context = SourceContext("a dog is a dog. a cat is a")
-        target_context = TargetContext.from_source(source_context, max_new_tokens=1)
-        patchscope = Patchscope(source_context, target_context)
-
+    def test_source_tokens(patchscope):
+        patchscope.source.prompt = "a dog is a dog. a cat is a"
         assert patchscope.source_token_ids == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
 
     @staticmethod
-    def test_source_forward_pass_creates_hidden_state():
-        source_context = SourceContext(
-            prompt="a dog is a dog. a cat is a",
-            position=None, # This will set position to all tokens
-            layer=0,
-            )
-        patchscope1 = Patchscope(source_context, TargetContext("target"))
+    def test_source_forward_pass_creates_hidden_state(patchscope):
+        patchscope.source.prompt = "a dog is a dog. a cat is a"
 
-        patchscope1.source_forward_pass()
+        # This will set position to all tokens
+        patchscope.source.position = None
+        patchscope.init_positions()
 
-        assert patchscope1._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
-        assert patchscope1._source_hidden_state.value.shape[1] == len(
-            patchscope1.source_tokens,
+        patchscope.source.layer = 0
+        patchscope.source_forward_pass()
+
+        assert patchscope._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
+        assert patchscope._source_hidden_state.value.shape[1] == len(
+            patchscope.source_tokens,
         )  # Number of tokens
         assert (
-            patchscope1._source_hidden_state.value.shape[2]
-            == patchscope1.source_model.transformer.embed_dim
+            patchscope._source_hidden_state.value.shape[2]
+            == patchscope.source_model.transformer.embed_dim
         )  # Embedding dimension
 
-        source_context2 = SourceContext(
-            prompt="a dog is a dog",
-            position=None, # This will set position to all tokens
-            layer=0,
-            )
-        patchscope2 = Patchscope(source_context2, TargetContext("target"))
-
-        patchscope2.source_forward_pass()
-        assert patchscope2._source_hidden_state.value.shape[1] == len(
-            patchscope2.source_tokens,
+        patchscope.source.prompt = "a dog is a dog"
+        patchscope.init_positions(force=True)
+        patchscope.source_forward_pass()
+        assert patchscope._source_hidden_state.value.shape[1] == len(
+            patchscope.source_tokens,
         )  # Number of tokens
