@@ -181,35 +181,25 @@ class TestPatchscope:
 
 
     @staticmethod
-    def test_future_lens():
-        outputs = dict()
-        for layer in range(11, 12):
-            for pos in range(4, 5): # marty mcfly from has 5 tokens
-                source_context = SourceContext(
-                    device='cpu',
-                    prompt="Marty McFly from",
-                    model_name='gpt2',
-                    position=pos,
-                    layer=layer,
-                )
+    def test_soft_prompt(patchscope):
+        soft_prompt = None
+        with patchscope.source_model.trace("a dog is a dog. a cat is a", remote=False):
+            soft_prompt = patchscope.source_model.transformer.wte.output.save()
 
-                target_context = TargetContext(
-                    device='cpu',
-                    soft_prompt=torch.load('/Users/vy/workplace/obvslib/data/processed/gpt2_jum_henson.pt'),
-                    model_name='gpt2',
-                    max_new_tokens=3,
-                    position=-1,
-                    layer=layer,
-                )
+        patchscope.source.prompt = soft_prompt.value[0, :, :] # remove batch dimension
+        patchscope.target.prompt = " ".join("_" * soft_prompt.shape[1]) # works for gpt2 & gptj, not sure about others
 
-                patchscope = Patchscope(source_context, target_context)
+        patchscope.source.position = -1
+        patchscope.target.position = -1
 
-                patchscope.run()
+        patchscope.source.layer = -1
+        patchscope.target.layer = -1
+        patchscope.init_positions()
 
-                outputs[(layer, pos)] = patchscope.full_output()
+        patchscope.run()
 
-        print(outputs)
-        assert outputs == {}
+        assert "cat" in patchscope.output()[-1]
+
 
     @staticmethod
     def test_token_identity_prompt_early(patchscope):
