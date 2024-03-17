@@ -110,8 +110,8 @@ class PatchscopeBase(ABC):
         """
         Return the generated output from the target model
         """
-        tokens = self.logits().argmax(dim=-1)
-        return [self.tokenizer.decode(token) for token in tokens]
+        token_ids = self.logits().argmax(dim=-1)
+        return [self.tokenizer.decode(token_id) for token_id in token_ids]
 
     def _output_token_ids(self) -> list[int]:
         tensors_list = [tensor_proxy.value for tensor_proxy in self._target_outputs]
