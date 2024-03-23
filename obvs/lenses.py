@@ -271,27 +271,9 @@ class BaseLogitLens:
 
         if kind == 'top_logits_preds':
 
-            logits = []
-            preds = []
-
-            # loop over all layers
-            for i, layer in enumerate(self.data['layers']):
-                layer_logits = []
-                layer_preds = []
-
-                # loop over every token in substring
-                for j in range(len(self.data['substring_tokens'])):
-
-                    # get the top prediction and logit
-                    top_logit, top_pred_idx = torch.max(self.data['logits'][(i, j)], dim=0)
-                    # convert the top_pred_idx to a word
-                    top_pred = self.patchscope.tokenizer.decode(top_pred_idx)
-
-                    layer_logits.append(top_logit.item())
-                    layer_preds.append(top_pred)
-
-                logits.append(layer_logits)
-                preds.append(layer_preds)
+            # get the top logits and corresponding tokens for each layer and token position
+            top_logits, top_pred_idcs = torch.max(self.data['logits'], dim=-1)
+            top_preds = self.patchscope.tokenizer.batch_decode(top_pred_idcs.flatten())
 
             x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
                        for tok in self.data['substring_tokens']]
@@ -299,7 +281,7 @@ class BaseLogitLens:
                        for i in self.data['layers']]
 
             # create a heatmap with the top logits and predicted tokens
-            fig = create_annotated_heatmap(logits, preds, x_ticks, y_ticks,
+            fig = create_annotated_heatmap(top_logits.flatten(), top_preds, x_ticks, y_ticks,
                                            title='Top predicted token and its logit')
 
         if file_name:
