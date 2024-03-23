@@ -334,6 +334,9 @@ class PatchscopeLogitLens(BaseLogitLens):
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
+
+        # detach logits, save tokens from substring and layer indices
+        self.data['logits'] = self.data['logits'].detach()
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
 
@@ -384,5 +387,8 @@ class ClassicLogitLens(BaseLogitLens):
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
+
+        # detach logits, save tokens from substring and layer indices
+        self.data['logits'] = self.data['logits'].detach()
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
