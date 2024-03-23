@@ -273,7 +273,13 @@ class BaseLogitLens:
 
             # get the top logits and corresponding tokens for each layer and token position
             top_logits, top_pred_idcs = torch.max(self.data['logits'], dim=-1)
-            top_preds = self.patchscope.tokenizer.batch_decode(top_pred_idcs.flatten())
+
+            # create NxM list of strings from the top predictions
+            top_preds = []
+            # loop over the layer dimension in top_preds, get a list of predictions for
+            # each position associated with that layer
+            for i in range(top_pred_idcs.shape[0]):
+                top_preds.append(self.patchscope.tokenizer.batch_decode(top_pred_idcs[i]))
 
             x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
                        for tok in self.data['substring_tokens']]
@@ -281,7 +287,7 @@ class BaseLogitLens:
                        for i in self.data['layers']]
 
             # create a heatmap with the top logits and predicted tokens
-            fig = create_annotated_heatmap(top_logits.flatten(), top_preds, x_ticks, y_ticks,
+            fig = create_annotated_heatmap(top_logits.tolist(), top_preds, x_ticks, y_ticks,
                                            title='Top predicted token and its logit')
 
         if file_name:
