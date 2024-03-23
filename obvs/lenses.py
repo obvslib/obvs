@@ -335,7 +335,9 @@ class PatchscopeLogitLens(BaseLogitLens):
         # get starting position and tokens of substring
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
-        self.data['logits'] = {}
+        # initialize tensor for logits
+        self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
+                                          self.patchscope.tokenizer.vocab_size)
 
         # loop over each layer and token in substring
         for i, layer in enumerate(layers):
@@ -346,7 +348,7 @@ class PatchscopeLogitLens(BaseLogitLens):
                 self.patchscope.target.position = start_pos + j
                 self.patchscope.run()
 
-                self.data['logits'][(i, j)] = self.patchscope.logits()[start_pos + j].to('cpu')
+                self.data['logits'][i, j, :] = self.patchscope.logits()[start_pos + j].to('cpu')
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
@@ -373,7 +375,9 @@ class ClassicLogitLens(BaseLogitLens):
         # get starting position and tokens of substring
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
-        self.data['logits'] = {}
+        # initialize tensor for logits
+        self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
+                                          self.patchscope.tokenizer.vocab_size)
 
         # loop over all layers
         for i, layer in enumerate(layers):
@@ -394,7 +398,7 @@ class ClassicLogitLens(BaseLogitLens):
 
             # loop over all tokens in substring and get the corresponding logits
             for j in range(len(substring_tokens)):
-                self.data['logits'][(i, j)] = logits[0, start_pos + j, :].to('cpu')
+                self.data['logits'][i, j, :] = logits[0, start_pos + j, :].to('cpu')
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
