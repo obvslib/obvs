@@ -17,7 +17,7 @@ In this script, we implement activation patching via the patchscope framework.
 """
 
 from obvs.patchscope import SourceContext, TargetContext, Patchscope
-from obvs.vis import create_annotated_heatmap
+from obvs.vis import create_heatmap
 
 
 # define metric
@@ -97,7 +97,7 @@ for layer in range(n_layers):
 # create x and y ticks for the heatmap
 
 
-fig = create_annotated_heatmap(metrics, None, patchscope.source_words, list(range(n_layers)))
+fig = create_heatmap(patchscope.source_words, list(range(n_layers)), metrics)
 fig.show()
 
 
