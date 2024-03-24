@@ -68,7 +68,7 @@ clean_logits = patchscope.source_output.detach()
 
 # now, do activation patching
 metrics = []
-n_layers = 3
+n_layers = 12
 
 # loop over all layers of interest
 for layer in range(n_layers):
