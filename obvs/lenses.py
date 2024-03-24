@@ -18,7 +18,7 @@ from plotly.graph_objects import Figure
 from obvs.logging import logger
 from obvs.metrics import PrecisionAtKMetric, SurprisalMetric
 from obvs.patchscope import Patchscope, SourceContext, TargetContext
-from obvs.vis import create_heatmap, plot_surprisal, create_annotated_heatmap
+from obvs.vis import create_heatmap, plot_surprisal
 
 
 class TokenIdentity:
@@ -299,8 +299,8 @@ class BaseLogitLens:
                        for i in self.data['layers']]
 
             # create a heatmap with the top logits and predicted tokens
-            fig = create_annotated_heatmap(logits, preds, x_ticks, y_ticks,
-                                           title='Top predicted token and its logit')
+            fig = create_heatmap(x_ticks, y_ticks, logits, cell_annotations=preds,
+                                 title='Top predicted token and its logit')
 
         if file_name:
             fig.write_html(f'{file_name.replace(".html", "")}.html')

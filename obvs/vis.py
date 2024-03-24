@@ -4,43 +4,50 @@ import plotly.graph_objects as go
 from typing import List
 
 
-def create_heatmap(
-    source_layers,
-    target_layers,
-    values,
-    title="Layer by Layer Comparison between Two Models",
-) -> go.Figure:
+def create_heatmap(x_data: List[str | int | float], y_data: List[str | int | float],
+                   values: List[float], title: str = '', cell_annotations: List[str] = None,
+                   x_label: str = '', y_label: str = '') -> go.Figure:
     """
-    Create a heatmap of the values between the layers of two models.
+    Create a heatmap with annotated cells. Set the x_ticks, y_ticks and title accordingly.
 
     Args:
-        model_1_layers (list): The layers of the first model.
-        model_2_layers (list): The layers of the second model.
-        values (list): The values to be plotted.
-
+        x_data (list): Data on the x-axis of the heatmap.
+        y_data (list): Data on the y-axis of the heatmap.
+        values (list): Cell values for the heatmap. Should have shape (nxn)
+        title (str): Title for the plot, default = ''
+        cell_annotations (list): Text printed inside the cells.
+            If given, should have shape (nxn), default = None
+        x_label (str): Label for the x-axis, default = ''
+        y_label (str): Label for the yaxis, default = ''
     Returns:
         go.Figure: The heatmap figure.
     """
-    if not isinstance(source_layers, list):
-        source_layers = list(source_layers)
-    if not isinstance(target_layers, list):
-        target_layers = list(target_layers)
 
-    # Create the heatmap
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=values,
-            x=target_layers,  # columns
-            y=source_layers,  # rows
-            colorscale="Viridis",  # or any other colorscale
-        ),
-    )
+    # x_data and y_data is treated categorical in plotly heatmaps, if the lists contain
+    # duplicates, these will be removed -> prevent this
+    x_categories = {val: i for i, val in enumerate(x_data)}
+    x_numeric = [x_categories[val] for val in x_data]
 
-    # Update the layout of the figure
+    y_categories = {val: i for i, val in enumerate(y_data)}
+    y_numeric = [y_categories[val] for val in y_data]
+
+    fig = go.Figure(data=go.Heatmap(
+        z=values,
+        x=x_numeric,
+        y=y_numeric,
+        hoverongaps=False,
+        text=cell_annotations,
+        texttemplate="%{text}",
+        textfont={"size": 20},
+        colorscale='Viridis'))
+
     fig.update_layout(
         title=title,
-        xaxis_title="Target Layers",
-        yaxis_title="Source Layers",
+        xaxis=dict(title=x_label, tickfont=dict(size=16), titlefont=dict(size=18), tickangle=-45,
+                   tickvals=list(x_categories.values()), ticktext=list(x_categories.keys())),
+        yaxis=dict(title=y_label, tickfont=dict(size=16), titlefont=dict(size=18),
+                   tickvals=list(y_categories.values()), ticktext=list(y_categories.keys())),
+        titlefont=dict(size=20)
     )
 
     return fig
@@ -105,41 +112,4 @@ def plot_surprisal(layers, values, std=None, title="Surprisal") -> go.Figure:
 
     return fig
 
-
-def create_annotated_heatmap(values: List[float], cell_annotations: List[str], x_ticks: List[str],
-                             y_ticks: List[str], x_label: str = '', y_label: str = '',
-                             title: str = '') -> go.Figure:
-    """
-    Create a heatmap with annotated cells. Set the x_ticks, y_ticks and title accordingly.
-
-    Args:
-        values (list): Cell values for the heatmap. Should have shape (nxn)
-        cell_annotations (list): Text printed inside the cells. Should have shape (nxn)
-        x_ticks (list): Tick labels for the x-axis. Should have shape (n)
-        y_ticks (list): Labels for the y-axis. Should have shape (n)
-        x_label (str): Label for the x-axis, default = ''
-        y_label (str): Label for the yaxis, default = ''
-        title (str): Title for the plot, default = ''
-    Returns:
-        go.Figure: The heatmap figure.
-    """
-
-    fig = go.Figure(data=go.Heatmap(
-        z=values,
-        x=x_ticks,
-        y=y_ticks,
-        hoverongaps=False,
-        text=cell_annotations,
-        texttemplate="%{text}",
-        textfont={"size": 20},
-        colorscale='Viridis'))
-
-    fig.update_layout(
-        title=title,
-        xaxis=dict(title=x_label, tickfont=dict(size=16), titlefont=dict(size=18), tickangle=-45),
-        yaxis=dict(title=y_label, tickfont=dict(size=16), titlefont=dict(size=18)),
-        titlefont=dict(size=20)
-    )
-
-    return fig
 
