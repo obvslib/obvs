@@ -165,7 +165,7 @@ class PatchscopeBase(ABC):
         the best out of your model.
         """
         if substring not in self.source.text_prompt:
-            raise ValueError(f"{substring} not in {self.source.text_prompt}")
+            raise ValueError(f"Substring {substring} could not be found in {self.source.text_prompt}")
 
         try:
             token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
@@ -194,7 +194,7 @@ class PatchscopeBase(ABC):
         the best out of your model.
         """
         if substring not in self.target.text_prompt:
-            raise ValueError(f"{substring} not in {self.target.text_prompt}")
+            raise ValueError(f"Substring {substring} could not be found in {self.target.text_prompt}")
 
         try:
             token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
