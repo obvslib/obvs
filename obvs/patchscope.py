@@ -48,18 +48,44 @@ class SourceContext:
     """
     Source context for the patchscope
     """
-
-    prompt: Sequence[str] = "<|endoftext|>"
+    # Either text prompt or a soft prompt (aka token embeddings of size [pos, dmodel])
+    prompt: str | torch.Tensor | None = None
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def __repr__(self) -> str:
-        return (
-            f"SourceContext(prompt={self.prompt}, position={self.position}, "
-            f"model_name={self.model_name}, layer={self.layer}, device={self.device})"
-        )
+    def __post_init__(self) -> None:
+        if self.prompt is None:
+            self.prompt = "<|endoftext|>"
+
+        # TODO: validation doesn't work after initialization. Maybe create a descriptor
+        if self._is_soft_prompt() and self.prompt.dim() != 2:
+            raise ValueError(f"soft prompt must have shape [pos, dmodel]. prompt.shape = {self.prompt.shape}")
+
+    @property
+    def text_prompt(self) -> str:
+        """
+        The text prompt input or generated from soft prompt
+        """
+        if self._is_soft_prompt():
+            tokens_count = self.prompt.shape[0]
+
+            # Works with GPT2 & GPTJ, not sure about other models
+            return " ".join("_" * tokens_count)
+
+        return self.prompt
+
+    @property
+    def soft_prompt(self) -> torch.Tensor | None:
+        """
+        The soft prompt input or None
+        """
+        return self.prompt if self._is_soft_prompt() else None
+
+    def _is_soft_prompt(self) -> bool:
+        return isinstance(self.prompt, torch.Tensor)
+
 
 
 @dataclass
@@ -89,14 +115,6 @@ class TargetContext(SourceContext):
             device=source.device,
         )
 
-    def __repr__(self) -> str:
-        return (
-            f"TargetContext(prompt={self.prompt}, position={self.position}, "
-            f"model_name={self.model_name}, layer={self.layer}, device={self.device}, "
-            f"max_new_tokens={self.max_new_tokens}, "
-            f"mapping_function={self.mapping_function})"
-        )
-
 
 class ModelLoader:
     @staticmethod
@@ -116,7 +134,7 @@ class ModelLoader:
         if "mamba" not in model_name:
             return {"max_new_tokens": max_new_tokens}
         else:
-            return {"max_length": max_new_tokens}
+            return {"max_new_tokens": max_new_tokens}
 
 
 class Patchscope(PatchscopeBase):
@@ -158,7 +176,11 @@ class Patchscope(PatchscopeBase):
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.trace(self.source.prompt, remote=self.REMOTE) as _:
+        with self.source_model.trace(self.source.text_prompt, remote=self.REMOTE) as _:
+            if self.source.soft_prompt is not None:
+                # TODO: validate this with non GPT2 & GPTJ models
+                self.source_model.transformer.wte.output = self.source.soft_prompt
+
             self._source_hidden_state = self.manipulate_source().save()
             self.source_output = self.source_model.lm_head.output[0].save()
 
@@ -189,10 +211,14 @@ class Patchscope(PatchscopeBase):
         For each architecture, you need to know the name of the layers.
         """
         with self.target_model.generate(
-            self.target.prompt,
+            self.target.text_prompt,
             remote=self.REMOTE,
             **self.generation_kwargs,
         ) as _:
+            if self.target.soft_prompt is not None:
+                # Not sure if this works with mamba and other models
+                self.target_model.transformer.wte.output = self.source.soft_prompt
+
             self.manipulate_target()
 
     def manipulate_target(self) -> None:
