@@ -4,15 +4,15 @@ import plotly.graph_objects as go
 from typing import List
 
 
-def create_heatmap(x_ticks: List[str], y_ticks: List[str], values: List[float], title: str = '',
-                   cell_annotations: List[str] = None, x_label: str = '',
-                   y_label: str = '') -> go.Figure:
+def create_heatmap(x_data: List[str | int | float], y_data: List[str | int | float],
+                   values: List[float], title: str = '', cell_annotations: List[str] = None,
+                   x_label: str = '', y_label: str = '') -> go.Figure:
     """
     Create a heatmap with annotated cells. Set the x_ticks, y_ticks and title accordingly.
 
     Args:
-        x_ticks (list): Tick labels for the x-axis. Should have shape (n)
-        y_ticks (list): Labels for the y-axis. Should have shape (n)
+        x_data (list): Data on the x-axis of the heatmap.
+        y_data (list): Data on the y-axis of the heatmap.
         values (list): Cell values for the heatmap. Should have shape (nxn)
         title (str): Title for the plot, default = ''
         cell_annotations (list): Text printed inside the cells.
@@ -23,10 +23,18 @@ def create_heatmap(x_ticks: List[str], y_ticks: List[str], values: List[float], 
         go.Figure: The heatmap figure.
     """
 
+    # x_data and y_data is treated categorical in plotly heatmaps, if the lists contain
+    # duplicates, these will be removed -> prevent this
+    x_categories = {val: i for i, val in enumerate(x_data)}
+    x_numeric = [x_categories[val] for val in x_data]
+
+    y_categories = {val: i for i, val in enumerate(y_data)}
+    y_numeric = [y_categories[val] for val in y_data]
+
     fig = go.Figure(data=go.Heatmap(
         z=values,
-        x=x_ticks,
-        y=y_ticks,
+        x=x_numeric,
+        y=y_numeric,
         hoverongaps=False,
         text=cell_annotations,
         texttemplate="%{text}",
@@ -35,8 +43,10 @@ def create_heatmap(x_ticks: List[str], y_ticks: List[str], values: List[float], 
 
     fig.update_layout(
         title=title,
-        xaxis=dict(title=x_label, tickfont=dict(size=16), titlefont=dict(size=18), tickangle=-45),
-        yaxis=dict(title=y_label, tickfont=dict(size=16), titlefont=dict(size=18)),
+        xaxis=dict(title=x_label, tickfont=dict(size=16), titlefont=dict(size=18), tickangle=-45,
+                   tickvals=list(x_categories.values()), ticktext=list(x_categories.keys())),
+        yaxis=dict(title=y_label, tickfont=dict(size=16), titlefont=dict(size=18),
+                   tickvals=list(y_categories.values()), ticktext=list(y_categories.keys())),
         titlefont=dict(size=20)
     )
 
