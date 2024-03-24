@@ -271,27 +271,15 @@ class BaseLogitLens:
 
         if kind == 'top_logits_preds':
 
-            logits = []
-            preds = []
+            # get the top logits and corresponding tokens for each layer and token position
+            top_logits, top_pred_idcs = torch.max(self.data['logits'], dim=-1)
 
-            # loop over all layers
-            for i, layer in enumerate(self.data['layers']):
-                layer_logits = []
-                layer_preds = []
-
-                # loop over every token in substring
-                for j in range(len(self.data['substring_tokens'])):
-
-                    # get the top prediction and logit
-                    top_logit, top_pred_idx = torch.max(self.data['logits'][(i, j)], dim=0)
-                    # convert the top_pred_idx to a word
-                    top_pred = self.patchscope.tokenizer.decode(top_pred_idx)
-
-                    layer_logits.append(top_logit.item())
-                    layer_preds.append(top_pred)
-
-                logits.append(layer_logits)
-                preds.append(layer_preds)
+            # create NxM list of strings from the top predictions
+            top_preds = []
+            # loop over the layer dimension in top_preds, get a list of predictions for
+            # each position associated with that layer
+            for i in range(top_pred_idcs.shape[0]):
+                top_preds.append(self.patchscope.tokenizer.batch_decode(top_pred_idcs[i]))
 
             x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
                        for tok in self.data['substring_tokens']]
@@ -299,6 +287,7 @@ class BaseLogitLens:
                        for i in self.data['layers']]
 
             # create a heatmap with the top logits and predicted tokens
+
             fig = create_heatmap(x_ticks, y_ticks, logits, cell_annotations=preds,
                                  title='Top predicted token and its logit')
 
@@ -335,7 +324,9 @@ class PatchscopeLogitLens(BaseLogitLens):
         # get starting position and tokens of substring
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
-        self.data['logits'] = {}
+        # initialize tensor for logits
+        self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
+                                          self.patchscope.tokenizer.vocab_size)
 
         # loop over each layer and token in substring
         for i, layer in enumerate(layers):
@@ -346,10 +337,13 @@ class PatchscopeLogitLens(BaseLogitLens):
                 self.patchscope.target.position = start_pos + j
                 self.patchscope.run()
 
-                self.data['logits'][(i, j)] = self.patchscope.logits()[start_pos + j].to('cpu')
+                self.data['logits'][i, j, :] = self.patchscope.logits()[start_pos + j].to('cpu')
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
+
+        # detach logits, save tokens from substring and layer indices
+        self.data['logits'] = self.data['logits'].detach()
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
 
@@ -373,7 +367,9 @@ class ClassicLogitLens(BaseLogitLens):
         # get starting position and tokens of substring
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
-        self.data['logits'] = {}
+        # initialize tensor for logits
+        self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
+                                          self.patchscope.tokenizer.vocab_size)
 
         # loop over all layers
         for i, layer in enumerate(layers):
@@ -394,9 +390,12 @@ class ClassicLogitLens(BaseLogitLens):
 
             # loop over all tokens in substring and get the corresponding logits
             for j in range(len(substring_tokens)):
-                self.data['logits'][(i, j)] = logits[0, start_pos + j, :].to('cpu')
+                self.data['logits'][i, j, :] = logits[0, start_pos + j, :].to('cpu')
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
+
+        # detach logits, save tokens from substring and layer indices
+        self.data['logits'] = self.data['logits'].detach()
         self.data['substring_tokens'] = substring_tokens
         self.data['layers'] = layers
