@@ -63,9 +63,6 @@ class SourceContext:
                  layer: int = -1,
                  model_name: str = "gpt2",
                  device: str = "cuda" if torch.cuda.is_available() else "cpu"):
-        self._prompt = ""
-        self._text_prompt = ""
-        self._soft_prompt = None
         self.prompt = prompt
         self.position = position
         self.layer = layer
@@ -130,7 +127,6 @@ class TargetContext(SourceContext):
                  device: str = "cuda" if torch.cuda.is_available() else "cpu",
                  mapping_function = lambda x: x,
                  max_new_tokens: int = 10):
-        self._prompt = None
         self.prompt = prompt
         self.position = position
         self.layer = layer
