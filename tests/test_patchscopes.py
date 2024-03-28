@@ -58,9 +58,6 @@ class TestPatchscope:
         assert patchscope.source_model
         assert patchscope.target_model
 
-        assert patchscope.source.position == range(len(patchscope.tokenizer.encode("source")))
-        assert patchscope.target.position == range(len(patchscope.tokenizer.encode("target")))
-
         assert patchscope.source.layer == -1
         assert patchscope.target.layer == -1
 
@@ -98,7 +95,6 @@ class TestPatchscope:
 
         # This will set position to all tokens
         patchscope.source.position = None
-        patchscope.init_positions()
 
         patchscope.source.layer = 0
         patchscope.source_forward_pass()
@@ -113,7 +109,6 @@ class TestPatchscope:
         )  # Embedding dimension
 
         patchscope.source.prompt = "a dog is a dog"
-        patchscope.init_positions(force=True)
         patchscope.source_forward_pass()
         assert patchscope._source_hidden_state.value.shape[1] == len(
             patchscope.source_tokens,
