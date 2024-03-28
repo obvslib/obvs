@@ -119,6 +119,10 @@ class TargetContext(SourceContext):
         mapping_function: Callable[[torch.Tensor], torch.Tensor] | None = None,
         max_new_tokens: int = 10,
     ) -> TargetContext:
+        """
+        Construct a target context from the source context
+        """
+
         return TargetContext(
             prompt=source.prompt,
             position=source.position,
