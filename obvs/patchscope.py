@@ -62,6 +62,9 @@ class SourceContext:
     # See https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python
     @property
     def prompt(self) -> str | torch.Tensor:
+        """
+        The prompt
+        """
         return self._prompt
 
     @prompt.setter
@@ -73,11 +76,11 @@ class SourceContext:
         if value is None:
             value = "<|endoftext|>"
 
-        if self._is_soft_prompt(value) and value.dim() != 2:
+        if isinstance(value, torch.Tensor) and value.dim() != 2:
             raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
 
         self._prompt = value
-        if self._is_soft_prompt(value):
+        if isinstance(value, torch.Tensor):
             self._text_prompt = " ".join("_" * value.shape[0])
             self._soft_prompt = value
         else:
@@ -97,11 +100,6 @@ class SourceContext:
         The soft prompt input or None
         """
         return self._soft_prompt
-
-    @staticmethod
-    def _is_soft_prompt(prompt) -> bool:
-        return isinstance(prompt, torch.Tensor)
-
 
 
 @dataclass
