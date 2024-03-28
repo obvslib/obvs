@@ -49,6 +49,9 @@ class SourceContext:
     Source context for the patchscope
     """
     _prompt: str | torch.Tensor
+    _text_prompt: str
+    _soft_prompt: torch.Tensor | None
+
     position: Sequence[int] | None
     layer: int
     model_name: str
@@ -60,7 +63,9 @@ class SourceContext:
                  layer: int = -1,
                  model_name: str = "gpt2",
                  device: str = "cuda" if torch.cuda.is_available() else "cpu"):
-        self._prompt = None
+        self._prompt = ""
+        self._text_prompt = ""
+        self._soft_prompt = None
         self.prompt = prompt
         self.position = position
         self.layer = layer
@@ -76,27 +81,29 @@ class SourceContext:
         if self._is_soft_prompt(value) and value.dim() != 2:
             raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
 
-        self._prompt = value if value is not None else "<|endoftext|>"
+        value = value if value is not None else "<|endoftext|>"
+
+        self._prompt = value
+        if self._is_soft_prompt(value):
+            self._text_prompt = " ".join("_" * value.shape[0])
+            self._soft_prompt = value
+        else:
+            self._text_prompt = value
+            self._soft_prompt = None
 
     @property
     def text_prompt(self) -> str:
         """
         The text prompt input or generated from soft prompt
         """
-        if self._is_soft_prompt(self._prompt):
-            tokens_count = self.prompt.shape[0]
-
-            # Works with GPT2 & GPTJ, not sure about other models
-            return " ".join("_" * tokens_count)
-
-        return self.prompt
+        return self._text_prompt
 
     @property
     def soft_prompt(self) -> torch.Tensor | None:
         """
         The soft prompt input or None
         """
-        return self.prompt if self._is_soft_prompt(self._prompt) else None
+        return self._soft_prompt
 
     @staticmethod
     def _is_soft_prompt(prompt) -> bool:
