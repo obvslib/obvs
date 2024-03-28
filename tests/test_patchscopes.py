@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import torch
 
 from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
+STUB_SOFT_PROMPT = torch.ones((1, 2))
+
 class TestContext:
+
     @staticmethod
     def test_source_context_init():
         source = SourceContext("source")
@@ -30,6 +34,17 @@ class TestContext:
         target = TargetContext("target", mapping_function=lambda x: x + 1)
         assert target.mapping_function(1) == 2
         assert target.mapping_function(tensor).equal(tensor + 1)
+
+    @staticmethod
+    def test_soft_prompt_dimensions_must_be_two():
+        SourceContext(prompt=STUB_SOFT_PROMPT)
+
+        with pytest.raises(ValueError):
+            SourceContext(prompt=torch.ones((1,)))
+
+        with pytest.raises(ValueError):
+            SourceContext(prompt=torch.ones((1,2,3)))
+
 
 
 class TestPatchscope:
@@ -75,7 +90,7 @@ class TestPatchscope:
     @staticmethod
     def test_source_tokens(patchscope):
         patchscope.source.prompt = "a dog is a dog. a cat is a"
-        assert patchscope.source_tokens == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
+        assert patchscope.source_token_ids == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
 
     @staticmethod
     def test_source_forward_pass_creates_hidden_state(patchscope):

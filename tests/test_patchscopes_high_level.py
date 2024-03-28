@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from obvs.patchscope import ModelLoader
+import torch
+
+from obvs.patchscope import ModelLoader, Patchscope, SourceContext, TargetContext
 
 
 class TestPatchscope:
@@ -29,7 +31,7 @@ class TestPatchscope:
     @staticmethod
     def test_equal_full_patch_all_layers(patchscope):
         """
-        This should work actoss all layers
+        This should work across all layers
         """
         patchscope.source.prompt = "a dog is a dog. a cat is a"
         patchscope.target.prompt = "a dog is a dog. a rat is a"
@@ -37,7 +39,11 @@ class TestPatchscope:
         patchscope.init_positions()
 
         for i in range(patchscope.n_layers):
+            patchscope.source.level = i
+            patchscope.target.level = i
+
             patchscope.run()
+
             output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
             decoded = patchscope.tokenizer.decode(output)
 
@@ -172,6 +178,28 @@ class TestPatchscope:
 
         # Assert the target has been patched to think a rat is a cat
         assert "cat" in patchscope.full_output()
+
+
+    @staticmethod
+    def test_soft_prompt(patchscope):
+        soft_prompt = None
+        with patchscope.source_model.trace("a dog is a dog. a cat is a", remote=False):
+            soft_prompt = patchscope.source_model.transformer.wte.output.save()
+
+        patchscope.source.prompt = soft_prompt.value[0, :, :] # remove batch dimension
+        patchscope.target.prompt = " ".join("_" * soft_prompt.shape[1]) # works for gpt2 & gptj, not sure about others
+
+        patchscope.source.position = -1
+        patchscope.target.position = -1
+
+        patchscope.source.layer = -1
+        patchscope.target.layer = -1
+        patchscope.init_positions()
+
+        patchscope.run()
+
+        assert "cat" in patchscope.output()[-1]
+
 
     @staticmethod
     def test_token_identity_prompt_early(patchscope):

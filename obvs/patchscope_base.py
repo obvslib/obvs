@@ -38,120 +38,123 @@ class PatchscopeBase(ABC):
         pass
 
     @property
-    def source_tokens(self):
+    def source_token_ids(self) -> list[int]:
         """
         Return the source tokens
         """
-        return self.tokenizer.encode(self.source.prompt)
+        return self.tokenizer.encode(self.source.text_prompt)
 
     @property
-    def target_tokens(self):
+    def target_token_ids(self) -> list[int]:
         """
         Return the target tokens
         """
-        return self.tokenizer.encode(self.target.prompt)
+        return self.tokenizer.encode(self.target.text_prompt)
 
     @property
-    def source_words(self):
+    def source_tokens(self) -> list[str]:
         """
         Return the input to the source model
         """
-        return [self.tokenizer.decode(token) for token in self.source_tokens]
+        return [self.tokenizer.decode(token) for token in self.source_token_ids]
 
     @property
-    def target_words(self):
+    def target_tokens(self) -> list[str]:
         """
         Return the input to the target model
         """
-        return [self.tokenizer.decode(token) for token in self.target_tokens]
+        return [self.tokenizer.decode(token) for token in self.target_token_ids]
 
-    def init_positions(self, force=False):
+    def init_positions(self, force: bool=False) -> None:
         if self.source.position is None or force:
             # If no position is specified, take them all
-            self.source.position = range(len(self.source_tokens))
+            self.source.position = range(len(self.source_token_ids))
 
         if self.target.position is None or force:
-            self.target.position = range(len(self.target_tokens))
+            self.target.position = range(len(self.target_token_ids))
 
-    def top_k_tokens(self, k=10):
+    def top_k_tokens(self, k: int=10) -> list[str]:
         """
         Return the top k tokens from the target model
         """
-        tokens = self._target_outputs[0].value[self.target.position, :].topk(k).indices.tolist()
-        return [self.tokenizer.decode(token) for token in tokens]
+        token_ids = self._target_outputs[0].value[self.target.position, :].topk(k).indices.tolist()
+        return [self.tokenizer.decode(token_id) for token_id in token_ids]
 
-    def top_k_logits(self, k=10):
+    def top_k_logits(self, k: int=10) -> list[int]:
         """
         Return the top k logits from the target model
         """
         return self._target_outputs[0].value[self.target.position, :].topk(k).values.tolist()
 
-    def top_k_probs(self, k=10):
+    def top_k_probs(self, k: int=10) -> list[float]:
         """
         Return the top k probabilities from the target model
         """
+        # FIXME: broken, returns a list of [1.0]
         logits = self.top_k_logits(k)
         return [torch.nn.functional.softmax(torch.tensor(logit), dim=-1).item() for logit in logits]
 
-    def logits(self):
+    def logits(self) -> torch.Tensor:
         """
-        Return the logits from the target model
+        Return the logits from the target model (size [pos, d_vocab])
         """
         return self._target_outputs[0].value[:, :]
 
-    def probabilities(self):
+    def probabilities(self) -> torch.Tensor:
         """
-        Return the probabilities from the target model
+        Return the probabilities from the target model (size [pos, d_vocab])
         """
         return torch.softmax(self.logits(), dim=-1)
 
-    def output(self):
+    def output(self) -> list[str]:
         """
         Return the generated output from the target model
         """
-        tokens = self.logits().argmax(dim=-1)
-        return [self.tokenizer.decode(token) for token in tokens]
+        token_ids = self.logits().argmax(dim=-1)
+        return [self.tokenizer.decode(token_id) for token_id in token_ids]
 
-    def _output_tokens(self):
-        tensors_list = [self._target_outputs[i].value for i in range(len(self._target_outputs))]
+    def _output_token_ids(self) -> list[int]:
+        tensors_list = [tensor_proxy.value for tensor_proxy in self._target_outputs]
         tokens = torch.cat(tensors_list, dim=0)
         return tokens.argmax(dim=-1).tolist()
 
-    def llama_output(self):
+    def llama_output(self) -> list[str]:
         """
         For llama, if you don't decode them all together, they don't add the spaces.
         """
-        tokens = self._output_tokens()
+        tokens = self._output_token_ids()
         return self.tokenizer.decode(tokens)
 
-    def full_output_words(self):
+    def full_output_tokens(self) -> list[str]:
         """
         Return the generated output from the target model
         This is a bit hacky. Its not super well supported. I have to concatenate all the inputs and add the input tokens to them.
         """
-        tokens = self._output_tokens()
+        token_ids = self._output_token_ids()
 
-        input_tokens = self.tokenizer.encode(self.target.prompt)
-        tokens.insert(0, " ")
-        tokens[: len(input_tokens)] = input_tokens
-        return [self.tokenizer.decode(token) for token in tokens]
+        input_token_ids = self.tokenizer.encode(self.target.text_prompt)
+        token_ids.insert(0, " ")
+        token_ids[: len(input_token_ids)] = input_token_ids
+        return [self.tokenizer.decode(token_id) for token_id in token_ids]
 
-    def full_output(self):
+    def full_output(self) -> str:
         """
         Return the generated output from the target model
         This is a bit hacky. Its not super well supported.
         I have to concatenate all the inputs and add the input tokens to them.
         """
-        return "".join(self.full_output_words())
+        return "".join(self.full_output_tokens())
 
-    def find_in_source(self, substring):
+    def find_in_source(self, substring: str) -> int:
         """
         Find the position of the substring tokens in the source prompt
+
+        Note: only works if substring's tokenization happens to match that of the source prompt's tokenization
         """
         position, _ = self.source_position_tokens(substring)
         return position
 
-    def source_position_tokens(self, substring):
+    def source_position_tokens(self, substring: str) -> tuple[int, list[int]]:
         """
         Find the position of a substring in the source prompt, and return the substring tokenized
 
@@ -161,24 +164,26 @@ class PatchscopeBase(ABC):
         few subtleties there, and tokenizing properly is important for getting
         the best out of your model.
         """
-        if substring not in self.source.prompt:
-            raise ValueError(f'Substring "{substring}" could not be found in prompt '
-                             f'"{self.source.prompt}"')
-        try:
-            tokens = self.tokenizer.encode(substring, add_special_tokens=False)
-            return self.source_tokens.index(tokens[0]), tokens
-        except ValueError:
-            tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
-            return self.source_tokens.index(tokens[0]), tokens
+        if substring not in self.source.text_prompt:
+            raise ValueError(f"Substring {substring} could not be found in {self.source.text_prompt}")
 
-    def find_in_target(self, substring):
+        try:
+            token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
+            return self.source_token_ids.index(token_ids[0]), token_ids
+        except ValueError:
+            token_ids = self.tokenizer.encode(" " + substring, add_special_tokens=False)
+            return self.source_token_ids.index(token_ids[0]), token_ids
+
+    def find_in_target(self, substring: str) -> int:
         """
         Find the position of the substring tokens in the target prompt
+
+        Note: only works if substring's tokenization happens to match that of the target prompt's tokenization
         """
         position, _ = self.target_position_tokens(substring)
         return position
 
-    def target_position_tokens(self, substring):
+    def target_position_tokens(self, substring) -> tuple[int, list[int]]:
         """
         Find the position of a substring in the target prompt, and return the substring tokenized
 
@@ -188,29 +193,29 @@ class PatchscopeBase(ABC):
         few subtleties there, and tokenizing properly is important for getting
         the best out of your model.
         """
-        if substring not in self.target.prompt:
-            raise ValueError(f'Substring "{substring}" could not be found in prompt '
-                             f'"{self.source.prompt}"')
+        if substring not in self.target.text_prompt:
+            raise ValueError(f"Substring {substring} could not be found in {self.target.text_prompt}")
+
         try:
-            tokens = self.tokenizer.encode(substring, add_special_tokens=False)
-            return self.target_tokens.index(tokens[0]), tokens
+            token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
+            return self.target_token_ids.index(token_ids[0]), token_ids
         except ValueError:
-            tokens = self.tokenizer.encode(" " + substring, add_special_tokens=False)
-            return self.target_tokens.index(tokens[0]), tokens
+            token_ids = self.tokenizer.encode(" " + substring, add_special_tokens=False)
+            return self.target_token_ids.index(token_ids[0]), token_ids
 
     @property
-    def n_layers(self):
+    def n_layers(self) -> int:
         return self.n_layers_target
 
     @property
-    def n_layers_source(self):
+    def n_layers_source(self) -> int:
         return len(getattr(getattr(self.source_model, self.MODEL_TARGET), self.LAYER_TARGET))
 
     @property
-    def n_layers_target(self):
+    def n_layers_target(self) -> int:
         return len(getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET))
 
-    def compute_precision_at_1(self, estimated_probs, true_token_index):
+    def compute_precision_at_1(self, estimated_probs: torch.Tensor, true_token_index):
         """
         Compute Precision@1 metric. From the outputs of the target (patched) model
         (estimated_probs) against the output of the source model, aka the 'true' token.
@@ -227,7 +232,7 @@ class PatchscopeBase(ABC):
         precision_at_1 = 1 if predicted_token_index == true_token_index else 0
         return precision_at_1
 
-    def compute_surprisal(self, estimated_probs, true_token_index):
+    def compute_surprisal(self, estimated_probs: torch.Tensor, true_token_index):
         """
         Compute Surprisal metric. From the outputs of the target (patched) model
         (estimated_probs) against the output of the source model, aka the 'true' token.
