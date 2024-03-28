@@ -33,7 +33,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 from nnsight import LanguageModel
@@ -48,37 +48,33 @@ class SourceContext:
     """
     Source context for the patchscope
     """
-    _prompt: str | torch.Tensor
-    _text_prompt: str
-    _soft_prompt: torch.Tensor | None
+    _prompt: str | torch.Tensor = field(init=False, repr=False, default="<|endoftext|>")
+    _text_prompt: str = field(init=False, repr=False)
+    _soft_prompt: torch.Tensor | None = field(init=False, repr=False)
 
-    position: Sequence[int] | None
-    layer: int
-    model_name: str
-    device: str
+    prompt: str | torch.Tensor
+    position: Sequence[int] | None = None
+    layer: int = -1
+    model_name: str = "gpt2"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def __init__(self,
-                 prompt: str | torch.Tensor | None = None,
-                 position: Sequence[int] | None = None,
-                 layer: int = -1,
-                 model_name: str = "gpt2",
-                 device: str = "cuda" if torch.cuda.is_available() else "cpu"):
-        self.prompt = prompt
-        self.position = position
-        self.layer = layer
-        self.model_name = model_name
-        self.device = device
-
+    # This overrides the `prompt` field
+    # See https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python
     @property
     def prompt(self) -> str | torch.Tensor:
         return self._prompt
 
     @prompt.setter
     def prompt(self, value: str | torch.Tensor | None):
+        if isinstance(value, property):
+            # initial value not specified, use default
+            value = SourceContext._prompt
+
+        if value is None:
+            value = "<|endoftext|>"
+
         if self._is_soft_prompt(value) and value.dim() != 2:
             raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
-
-        value = value if value is not None else "<|endoftext|>"
 
         self._prompt = value
         if self._is_soft_prompt(value):
@@ -116,24 +112,8 @@ class TargetContext(SourceContext):
     a mapping function and max_new_tokens to control generation length
     """
 
-    mapping_function: Callable[[torch.Tensor], torch.Tensor]
-    max_new_tokens: int
-
-    def __init__(self,
-                 prompt: str | torch.Tensor | None = None,
-                 position: Sequence[int] | None = None,
-                 layer: int = -1,
-                 model_name: str = "gpt2",
-                 device: str = "cuda" if torch.cuda.is_available() else "cpu",
-                 mapping_function = lambda x: x,
-                 max_new_tokens: int = 10):
-        self.prompt = prompt
-        self.position = position
-        self.layer = layer
-        self.model_name = model_name
-        self.device = device
-        self.mapping_function = mapping_function
-        self.max_new_tokens = max_new_tokens
+    mapping_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x
+    max_new_tokens: int = 10
 
     @staticmethod
     def from_source(
