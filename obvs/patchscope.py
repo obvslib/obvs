@@ -48,27 +48,42 @@ class SourceContext:
     """
     Source context for the patchscope
     """
-    # Either text prompt or a soft prompt (aka token embeddings of size [pos, dmodel])
-    prompt: str | torch.Tensor | None = None
-    position: Sequence[int] | None = None
-    layer: int = -1
-    model_name: str = "gpt2"
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    _prompt: str | torch.Tensor
+    position: Sequence[int] | None
+    layer: int
+    model_name: str
+    device: str
 
-    def __post_init__(self) -> None:
-        if self.prompt is None:
-            self.prompt = "<|endoftext|>"
+    def __init__(self,
+                 prompt: str | torch.Tensor | None = None,
+                 position: Sequence[int] | None = None,
+                 layer: int = -1,
+                 model_name: str = "gpt2",
+                 device: str = "cuda" if torch.cuda.is_available() else "cpu"):
+        self._prompt = None
+        self.prompt = prompt
+        self.position = position
+        self.layer = layer
+        self.model_name = model_name
+        self.device = device
 
-        # TODO: validation doesn't work after initialization. Maybe create a descriptor
-        if self._is_soft_prompt() and self.prompt.dim() != 2:
-            raise ValueError(f"soft prompt must have shape [pos, dmodel]. prompt.shape = {self.prompt.shape}")
+    @property
+    def prompt(self) -> str | torch.Tensor:
+        return self._prompt
+
+    @prompt.setter
+    def prompt(self, value: str | torch.Tensor | None):
+        if self._is_soft_prompt(value) and value.dim() != 2:
+            raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
+
+        self._prompt = value if value is not None else "<|endoftext|>"
 
     @property
     def text_prompt(self) -> str:
         """
         The text prompt input or generated from soft prompt
         """
-        if self._is_soft_prompt():
+        if self._is_soft_prompt(self._prompt):
             tokens_count = self.prompt.shape[0]
 
             # Works with GPT2 & GPTJ, not sure about other models
@@ -81,10 +96,11 @@ class SourceContext:
         """
         The soft prompt input or None
         """
-        return self.prompt if self._is_soft_prompt() else None
+        return self.prompt if self._is_soft_prompt(self._prompt) else None
 
-    def _is_soft_prompt(self) -> bool:
-        return isinstance(self.prompt, torch.Tensor)
+    @staticmethod
+    def _is_soft_prompt(prompt) -> bool:
+        return isinstance(prompt, torch.Tensor)
 
 
 
@@ -96,8 +112,25 @@ class TargetContext(SourceContext):
     a mapping function and max_new_tokens to control generation length
     """
 
-    mapping_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x
-    max_new_tokens: int = 10
+    mapping_function: Callable[[torch.Tensor], torch.Tensor]
+    max_new_tokens: int
+
+    def __init__(self,
+                 prompt: str | torch.Tensor | None = None,
+                 position: Sequence[int] | None = None,
+                 layer: int = -1,
+                 model_name: str = "gpt2",
+                 device: str = "cuda" if torch.cuda.is_available() else "cpu",
+                 mapping_function = lambda x: x,
+                 max_new_tokens: int = 10):
+        self._prompt = None
+        self.prompt = prompt
+        self.position = position
+        self.layer = layer
+        self.model_name = model_name
+        self.device = device
+        self.mapping_function = mapping_function
+        self.max_new_tokens = max_new_tokens
 
     @staticmethod
     def from_source(
