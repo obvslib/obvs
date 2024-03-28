@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Sequence
 
 import torch
 
@@ -38,6 +39,18 @@ class PatchscopeBase(ABC):
         pass
 
     @property
+    def _source_position(self) -> Sequence[int]:
+        return (self.source.position
+                if self.source.position is not None
+                else range(len(self.source_token_ids)))
+
+    @property
+    def _target_position(self) -> Sequence[int]:
+        return (self.target.position
+                if self.target.position is not None
+                else range(len(self.target_token_ids)))
+
+    @property
     def source_token_ids(self) -> list[int]:
         """
         Return the source tokens
@@ -64,14 +77,6 @@ class PatchscopeBase(ABC):
         Return the input to the target model
         """
         return [self.tokenizer.decode(token) for token in self.target_token_ids]
-
-    def init_positions(self, force: bool=False) -> None:
-        if self.source.position is None or force:
-            # If no position is specified, take them all
-            self.source.position = range(len(self.source_token_ids))
-
-        if self.target.position is None or force:
-            self.target.position = range(len(self.target_token_ids))
 
     def top_k_tokens(self, k: int=10) -> list[str]:
         """

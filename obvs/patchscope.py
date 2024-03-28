@@ -167,7 +167,6 @@ class Patchscope(PatchscopeBase):
             self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
 
         self.tokenizer = self.source_model.tokenizer
-        self.init_positions()
 
         self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
         self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
@@ -198,7 +197,7 @@ class Patchscope(PatchscopeBase):
         """
         return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
             self.source.layer
-        ].output[0][:, self.source.position, :]
+        ].output[0][:, self._source_position, :]
 
     def map(self) -> None:
         """
@@ -231,7 +230,7 @@ class Patchscope(PatchscopeBase):
         (
             getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
                 self.target.layer
-            ].output[0][:, self.target.position, :]
+            ].output[0][:, self._target_position, :]
         ) = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())
