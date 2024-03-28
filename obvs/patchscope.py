@@ -147,13 +147,6 @@ class ModelLoader:
             logger.info(f"Loading NNsight LanguagModel: {model_name}")
             return LanguageModel(model_name, device_map=device)
 
-    @staticmethod
-    def generation_kwargs(model_name: str, max_new_tokens: int) -> dict:
-        if "mamba" not in model_name:
-            return {"max_new_tokens": max_new_tokens}
-        else:
-            return {"max_new_tokens": max_new_tokens}
-
 
 class Patchscope(PatchscopeBase):
     REMOTE: bool = False
@@ -172,11 +165,6 @@ class Patchscope(PatchscopeBase):
             self.target_model = self.source_model
         else:
             self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
-
-        self.generation_kwargs = ModelLoader.generation_kwargs(
-            self.target.model_name,
-            self.target.max_new_tokens,
-        )
 
         self.tokenizer = self.source_model.tokenizer
         self.init_positions()
@@ -231,7 +219,7 @@ class Patchscope(PatchscopeBase):
         with self.target_model.generate(
             self.target.text_prompt,
             remote=self.REMOTE,
-            **self.generation_kwargs,
+            max_new_tokens=self.target.max_new_tokens,
         ) as _:
             if self.target.soft_prompt is not None:
                 # Not sure if this works with mamba and other models
