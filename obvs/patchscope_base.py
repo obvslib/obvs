@@ -17,10 +17,10 @@ class PatchscopeBase(ABC):
         The following works for gpt2, llama2 and mistral models.
         """
         if "gpt" in model_name:
-            return "transformer", "h"
+            return "transformer", "h", "attn", "c_proj"
         if "mamba" in model_name:
-            return "backbone", "layers"
-        return "model", "layers"
+            return "backbone", "layers", None, None
+        return "model", "layers", "attention", "heads"
 
     @abstractmethod
     def source_forward_pass(self) -> None:
