@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
+import einops
 import torch
 from nnsight import LanguageModel
 from tqdm import tqdm
@@ -55,6 +56,7 @@ class SourceContext:
     prompt: str | torch.Tensor
     position: Sequence[int] | None = None
     layer: int = -1
+    head: int | None = None
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -128,6 +130,7 @@ class TargetContext(SourceContext):
             position=source.position,
             model_name=source.model_name,
             layer=source.layer,
+            head=source.head,
             mapping_function=mapping_function or (lambda x: x),
             max_new_tokens=max_new_tokens,
             device=source.device,
@@ -168,8 +171,10 @@ class Patchscope(PatchscopeBase):
 
         self.tokenizer = self.source_model.tokenizer
 
-        self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
-        self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
+        self.MODEL_SOURCE, self.LAYER_SOURCE, self.ATTN_SOURCE, self.HEAD_SOURCE = \
+            self.get_model_specifics(self.source.model_name)
+        self.MODEL_TARGET, self.LAYER_TARGET, self.ATTN_TARGET, self.HEAD_TARGET = \
+            self.get_model_specifics(self.target.model_name)
 
         self._target_outputs: list[torch.Tensor] = []
 
@@ -195,9 +200,24 @@ class Patchscope(PatchscopeBase):
 
         NB: This is seperated out from the source_forward_pass method to allow for batching.
         """
-        return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
+
+        # get the specified layer
+        layer = getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
             self.source.layer
-        ].output[0][:, self._source_position, :]
+        ]
+
+        # if a head index is given, need to access the ATTN and HEAD components
+        if self.source.head is not None:
+            attn = getattr(layer, self.ATTN_SOURCE)
+            head_act = getattr(attn, self.HEAD_SOURCE).input[0][0]
+
+            # need to reshape the output of head into the specific heads
+            head_act = einops.rearrange(head_act,
+                                        'batch pos (n_head d_head) -> batch pos n_head d_head',
+                                        n_head=attn.num_heads, d_head=attn.head_dim)
+            return head_act[:, self._source_position, self.source.head, :]
+
+        return layer.output[0][:, self._source_position, :]
 
     def map(self) -> None:
         """
