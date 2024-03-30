@@ -95,7 +95,7 @@ for layer in range(n_layers):
     metrics.append(layer_metrics)
 
 fig = create_heatmap(
-    patchscope.source_words, list(range(n_layers)), metrics, x_label='Token', y_label='Layer',
+    patchscope.source_tokens, list(range(n_layers)), metrics, x_label='Token', y_label='Layer',
     title='Normalized logit difference after activation patching by layer and position'
 )
 fig.show()
