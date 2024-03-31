@@ -257,10 +257,28 @@ class Patchscope(PatchscopeBase):
         for _ in range(self.target.max_new_tokens - 1):
             self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
+    def check_patchscope_setup(self) -> bool:
+        """ Check if patchscope is correctly set-up before running """
+
+        # head can be int or None, patchscope run is only possible if they have the same type
+        # TODO: Find out how to do it PEP8 compliant
+        if type(self.source.head) != type(self.target.head):
+            logger.error('Cannot run patchscope with source head attribute: %s and target'
+                         ' head attribute: %s. Both need to be of the same type.', self.source.head,
+                         self.target.head)
+            return False
+        return True
+
     def run(self) -> None:
         """
         Run the patchscope
         """
+
+        # check before running
+        if not self.check_patchscope_setup():
+            logger.error('Abort running patchscope')
+            return
+
         self.clear()
         self.source_forward_pass()
         self.map()
