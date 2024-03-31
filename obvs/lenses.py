@@ -222,7 +222,10 @@ class TokenIdentity:
             self.fig.show()
         return self
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> add WIP code to reproduce surprisal for logit lenses
 class BaseLogitLens:
     """Parent class for LogitLenses.
     Patchscope and classic logit-lens are run differently,
@@ -344,11 +347,14 @@ class PatchscopeLogitLens(BaseLogitLens):
         assert position < len(self.substring_tokens), "Position out of bounds!"
 
         # loop over each layer and token in substring
-        for i, layer in enumerate(self.layers):
-            self.patchscope.source.layer = layer
-            self.patchscope.source.position = self.start_pos + position
-            self.patchscope.target.position = self.start_pos + position
-            self.patchscope.run()
+        for i, layer in enumerate(layers):
+            for j in range(len(substring_tokens)):
+                print (i,j)
+
+                self.patchscope.source.layer = layer
+                self.patchscope.source.position = start_pos + j
+                self.patchscope.target.position = start_pos + j
+                self.patchscope.run()
 
             self.data["logits"][i, position, :] = self.patchscope.logits()[
                 self.start_pos + position
@@ -361,6 +367,31 @@ class PatchscopeLogitLens(BaseLogitLens):
         self.data["logits"] = self.data["logits"].detach()
         self.data["substring_tokens"] = self.substring_tokens
         self.data["layers"] = self.layers
+
+    def compute_surprisal_at_position(self):
+        """Compute the surprisal for a specific position across all layers.
+
+        Args:
+            target_position (int): The position in the token sequence for which to compute surprisal.
+        """
+        if 'logits' not in self.data:
+            raise ValueError("Logits data not found. Please run the lens first.")
+
+        # Assuming target_token_ids is known and corresponds to the actual token ID at target_position
+        # For this example, we assume a single target token ID for simplicity.
+        # In a real scenario, this would be dynamic or calculated based on input sequence.
+        target_token_id = self.target_token_id  # This should be set or calculated based on your specific use case.
+        target_position = self.target_token_position
+        logits_at_position = self.data['logits'][:, target_position, :]  # Shape: (n_layers, d_vocab)
+        probabilities_at_position = torch.softmax(torch.tensor(logits_at_position), dim=-1)
+
+        # Probability of the actual next token at the given position, for all layers
+        actual_token_probabilities = probabilities_at_position[:, target_token_id]
+
+        # Surprisal calculation: negative log probability
+        surprisals = -torch.log(actual_token_probabilities)
+
+        return surprisals.numpy()  # Convert to numpy array for convenience
 
 
 class ClassicLogitLens(BaseLogitLens):
@@ -412,6 +443,77 @@ class ClassicLogitLens(BaseLogitLens):
             torch.cuda.empty_cache()
 
         # detach logits, save tokens from substring and layer indices
-        self.data["logits"] = self.data["logits"].detach()
-        self.data["substring_tokens"] = substring_tokens
-        self.data["layers"] = layers
+        self.data['logits'] = self.data['logits'].detach()
+        self.data['substring_tokens'] = substring_tokens
+        self.data['layers'] = layers
+
+
+    def compute_surprisal_at_position(self):
+        """Compute the surprisal for a specific position across all layers.
+
+        Args:
+            target_position (int): The position in the token sequence for which to compute surprisal.
+        """
+        if 'logits' not in self.data:
+            raise ValueError("Logits data not found. Please run the lens first.")
+
+        # Assuming target_token_ids is known and corresponds to the actual token ID at target_position
+        # For this example, we assume a single target token ID for simplicity.
+        # In a real scenario, this would be dynamic or calculated based on input sequence.
+        target_token_id = self.target_token_id  # This should be set or calculated based on your specific use case.
+        target_position = self.target_token_position
+        logits_at_position = self.data['logits'][:, target_position, :]  # Shape: (n_layers, d_vocab)
+        probabilities_at_position = torch.softmax(torch.tensor(logits_at_position), dim=-1)
+
+        # Probability of the actual next token at the given position, for all layers
+        actual_token_probabilities = probabilities_at_position[:, target_token_id]
+
+        # Surprisal calculation: negative log probability
+        surprisals = -torch.log(actual_token_probabilities)
+
+        return surprisals.numpy()  # Convert to numpy array for convenience
+
+
+    # def compute_surprisal(self, word: str | None = None):
+    #     # I've just grabbed this from the TokenIdentity class for now
+    #     target = self._target_word(word)
+    #     self.prepare_data_array()
+
+    #     logger.info(f"Computing surprisal of target tokens: {target} from word {word}")
+
+    #     if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+    #         for i, source_layer in enumerate(self.source_layers):
+    #             for j, target_layer in enumerate(self.target_layers):
+    #                 logits = self.outputs[i * len(self.target_layers) + j]
+    #                 self.surprisal[i, j] = SurprisalMetric.batch(logits, target)
+    #                 self.precision_at_1[i, j] = PrecisionAtKMetric.batch(logits, target, 1)
+    #     elif hasattr(self, "source_layers"):
+    #         for i, output in enumerate(self.outputs):
+    #             self.surprisal[i] = SurprisalMetric.batch(output, target)
+    #             self.precision_at_1[i] = PrecisionAtKMetric.batch(output, target, 1)
+    #     logger.info("Done")
+
+    #     self.save_to_file()
+
+    #     return self
+
+    # def _target_word(self, word):
+    #     # I've just grabbed this from the TokenIdentity class for now
+    #     if isinstance(word, str):
+    #         if not word.startswith(" ") and "gpt" in self._patchscope.model_name:
+    #             # Note to devs: we probably want some tokenizer helpers for this kind of thing
+    #             logger.warning("Target should probably start with a space!")
+    #         target = self._patchscope.tokenizer.encode(word)
+    #     else:
+    #         # Otherwise, we find the next token from the source output:
+    #         target = self._patchscope.source_output[-1].argmax(dim=-1).item()
+    #     return target
+
+    # def prepare_data_array(self):
+    #     # I've just grabbed this from the TokenIdentity class for now
+    #     if hasattr(self, "source_layers") and hasattr(self, "target_layers"):
+    #         self.surprisal = np.zeros((len(self.source_layers), len(self.target_layers)))
+    #         self.precision_at_1 = np.zeros((len(self.source_layers), len(self.target_layers)))
+    #     elif hasattr(self, "source_layers"):
+    #         self.surprisal = np.zeros(len(self.source_layers))
+    #         self.precision_at_1 = np.zeros(len(self.source_layers))

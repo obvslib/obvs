@@ -39,9 +39,9 @@ import einops
 import torch
 from nnsight import LanguageModel
 from tqdm import tqdm
+from obvs.patchscope_base import PatchscopeBase
 
 from obvs.logging import logger
-from obvs.patchscope_base import PatchscopeBase
 
 
 @dataclass
