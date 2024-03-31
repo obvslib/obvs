@@ -33,7 +33,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 from nnsight import LanguageModel
@@ -48,44 +48,58 @@ class SourceContext:
     """
     Source context for the patchscope
     """
-    # Either text prompt or a soft prompt (aka token embeddings of size [pos, dmodel])
-    prompt: str | torch.Tensor | None = None
+    _prompt: str | torch.Tensor = field(init=False, repr=False, default="<|endoftext|>")
+    _text_prompt: str = field(init=False, repr=False)
+    _soft_prompt: torch.Tensor | None = field(init=False, repr=False)
+
+    prompt: str | torch.Tensor
     position: Sequence[int] | None = None
     layer: int = -1
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def __post_init__(self) -> None:
-        if self.prompt is None:
-            self.prompt = "<|endoftext|>"
+    # This overrides the `prompt` field
+    # See https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python
+    @property
+    def prompt(self) -> str | torch.Tensor:
+        """
+        The prompt
+        """
+        return self._prompt
 
-        # TODO: validation doesn't work after initialization. Maybe create a descriptor
-        if self._is_soft_prompt() and self.prompt.dim() != 2:
-            raise ValueError(f"soft prompt must have shape [pos, dmodel]. prompt.shape = {self.prompt.shape}")
+    @prompt.setter
+    def prompt(self, value: str | torch.Tensor | None):
+        if isinstance(value, property):
+            # initial value not specified, use default
+            value = SourceContext._prompt
+
+        if value is None:
+            value = "<|endoftext|>"
+
+        if isinstance(value, torch.Tensor) and value.dim() != 2:
+            raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
+
+        self._prompt = value
+        if isinstance(value, torch.Tensor):
+            self._text_prompt = " ".join("_" * value.shape[0])
+            self._soft_prompt = value
+        else:
+            self._text_prompt = value
+            self._soft_prompt = None
 
     @property
     def text_prompt(self) -> str:
         """
         The text prompt input or generated from soft prompt
         """
-        if self._is_soft_prompt():
-            tokens_count = self.prompt.shape[0]
-
-            # Works with GPT2 & GPTJ, not sure about other models
-            return " ".join("_" * tokens_count)
-
-        return self.prompt
+        return self._text_prompt
 
     @property
     def soft_prompt(self) -> torch.Tensor | None:
         """
         The soft prompt input or None
         """
-        return self.prompt if self._is_soft_prompt() else None
-
-    def _is_soft_prompt(self) -> bool:
-        return isinstance(self.prompt, torch.Tensor)
-
+        return self._soft_prompt
 
 
 @dataclass
@@ -105,6 +119,10 @@ class TargetContext(SourceContext):
         mapping_function: Callable[[torch.Tensor], torch.Tensor] | None = None,
         max_new_tokens: int = 10,
     ) -> TargetContext:
+        """
+        Construct a target context from the source context
+        """
+
         return TargetContext(
             prompt=source.prompt,
             position=source.position,
@@ -129,13 +147,6 @@ class ModelLoader:
             logger.info(f"Loading NNsight LanguagModel: {model_name}")
             return LanguageModel(model_name, device_map=device)
 
-    @staticmethod
-    def generation_kwargs(model_name: str, max_new_tokens: int) -> dict:
-        if "mamba" not in model_name:
-            return {"max_new_tokens": max_new_tokens}
-        else:
-            return {"max_new_tokens": max_new_tokens}
-
 
 class Patchscope(PatchscopeBase):
     REMOTE: bool = False
@@ -155,13 +166,7 @@ class Patchscope(PatchscopeBase):
         else:
             self.target_model = ModelLoader.load(self.target.model_name, device=self.target.device)
 
-        self.generation_kwargs = ModelLoader.generation_kwargs(
-            self.target.model_name,
-            self.target.max_new_tokens,
-        )
-
         self.tokenizer = self.source_model.tokenizer
-        self.init_positions()
 
         self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
         self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
@@ -192,7 +197,7 @@ class Patchscope(PatchscopeBase):
         """
         return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
             self.source.layer
-        ].output[0][:, self.source.position, :]
+        ].output[0][:, self._source_position, :]
 
     def map(self) -> None:
         """
@@ -213,7 +218,7 @@ class Patchscope(PatchscopeBase):
         with self.target_model.generate(
             self.target.text_prompt,
             remote=self.REMOTE,
-            **self.generation_kwargs,
+            max_new_tokens=self.target.max_new_tokens,
         ) as _:
             if self.target.soft_prompt is not None:
                 # Not sure if this works with mamba and other models
@@ -225,7 +230,7 @@ class Patchscope(PatchscopeBase):
         (
             getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
                 self.target.layer
-            ].output[0][:, self.target.position, :]
+            ].output[0][:, self._target_position, :]
         ) = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())

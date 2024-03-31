@@ -19,7 +19,6 @@ class TestPatchscope:
         # This configuration will set it to take all tokens
         patchscope.source.position = None
         patchscope.target.position = None
-        patchscope.init_positions()
 
         patchscope.run()
         output = patchscope._target_outputs[0].value.argmax(dim=-1)[-1].tolist()
@@ -36,7 +35,6 @@ class TestPatchscope:
         patchscope.source.prompt = "a dog is a dog. a cat is a"
         patchscope.target.prompt = "a dog is a dog. a rat is a"
         patchscope.target.max_new_tokens = 1
-        patchscope.init_positions()
 
         for i in range(patchscope.n_layers):
             patchscope.source.level = i
@@ -123,10 +121,6 @@ class TestPatchscope:
         patchscope.source.prompt = "a dog is a dog. a rat is a rat. a cat"
         patchscope.target.prompt = patchscope.source.prompt
         patchscope.target.max_new_tokens = 4
-        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
-            patchscope.target.model_name,
-            4,
-        )
 
         patchscope.run()
 
@@ -141,12 +135,7 @@ class TestPatchscope:
         patchscope.target.prompt = "a dog is a dog. a bat is a bat. a rat"
         patchscope.source.position = None
         patchscope.target.position = None
-        patchscope.init_positions()
         patchscope.target.max_new_tokens = 4
-        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
-            patchscope.target.model_name,
-            4,
-        )
 
         patchscope.source.layer = 3
         patchscope.target.layer = 3
@@ -166,10 +155,6 @@ class TestPatchscope:
         patchscope.source.position = -1
         patchscope.target.position = -1
         patchscope.target.max_new_tokens = 4
-        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
-            patchscope.target.model_name,
-            4,
-        )
 
         patchscope.source.layer = 3
         patchscope.target.layer = 3
@@ -194,7 +179,6 @@ class TestPatchscope:
 
         patchscope.source.layer = -1
         patchscope.target.layer = -1
-        patchscope.init_positions()
 
         patchscope.run()
 
@@ -214,10 +198,6 @@ class TestPatchscope:
             "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
         )
         patchscope.target.max_new_tokens = 4
-        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
-            patchscope.target.model_name,
-            4,
-        )
 
         # Take the final token from the source
         patchscope.source.position = -1
@@ -247,10 +227,6 @@ class TestPatchscope:
             "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
         )
         patchscope.target.max_new_tokens = 4
-        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
-            patchscope.target.model_name,
-            4,
-        )
 
         # Take the final token from the source
         patchscope.source.position = -1
@@ -276,12 +252,8 @@ class TestPatchscope:
         patchscope.target.prompt = "a dog is a dog. a bat is a bat. a rat"
         patchscope.source.position = None
         patchscope.target.position = None
-        patchscope.init_positions()
         patchscope.target.max_new_tokens = 2
-        patchscope.generation_kwargs = ModelLoader.generation_kwargs(
-            patchscope.target.model_name,
-            2,
-        )
+
         values = list(patchscope.over(range(2), range(4)))
         # Its a layer x layer list
         assert len(values) == 8
