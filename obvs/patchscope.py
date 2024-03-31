@@ -212,7 +212,7 @@ class Patchscope(PatchscopeBase):
             # TODO may not be .input for other models
             head_act = getattr(attn, self.HEAD_SOURCE).input[0][0]
 
-            # need to reshape the output of head into the specific heads
+            # need to reshape the output into the specific heads
             head_act = einops.rearrange(head_act,
                                         'batch pos (n_head d_head) -> batch pos n_head d_head',
                                         n_head=attn.num_heads, d_head=attn.head_dim)
@@ -247,6 +247,7 @@ class Patchscope(PatchscopeBase):
 
             self.manipulate_target()
 
+    @torch.no_grad
     def manipulate_target(self) -> None:
 
         # get the specified layer
@@ -275,15 +276,8 @@ class Patchscope(PatchscopeBase):
                              list(self._mapped_hidden_state.shape))
                 return
             split_head_act[:, self._target_position, self.target.head, :] = self._mapped_hidden_state
-
-            # reshape and patch the full head activations
-            concat_head_act = einops.rearrange(
-                split_head_act, 'batch pos n_head d_head -> batch pos (n_head d_head)'
-            )
-            getattr(attn, self.HEAD_TARGET).input[0][0] = concat_head_act
-            return
-
-        layer.output[0][:, self._target_position, :] = self._mapped_hidden_state
+        else:
+            layer.output[0][:, self._target_position, :] = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())
         for _ in range(self.target.max_new_tokens - 1):
