@@ -209,6 +209,7 @@ class Patchscope(PatchscopeBase):
         # if a head index is given, need to access the ATTN and HEAD components
         if self.source.head is not None:
             attn = getattr(layer, self.ATTN_SOURCE)
+            # TODO may not be .input for other models
             head_act = getattr(attn, self.HEAD_SOURCE).input[0][0]
 
             # need to reshape the output of head into the specific heads
@@ -247,11 +248,42 @@ class Patchscope(PatchscopeBase):
             self.manipulate_target()
 
     def manipulate_target(self) -> None:
-        (
-            getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
-                self.target.layer
-            ].output[0][:, self._target_position, :]
-        ) = self._mapped_hidden_state
+
+        # get the specified layer
+        layer = getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
+            self.target.layer
+        ]
+
+        # if a head index is given, need to access the ATTN and HEAD components
+        if self.target.head is not None:
+            attn = getattr(layer, self.ATTN_TARGET)
+            # TODO may not be .input for other models
+            concat_head_act = getattr(attn, self.HEAD_TARGET).input[0][0]
+
+            # need to reshape the output of head into the specific heads
+            split_head_act = einops.rearrange(
+                concat_head_act, 'batch pos (n_head d_head) -> batch pos n_head d_head',
+                n_head=attn.num_heads, d_head=attn.head_dim
+            )
+
+            # check if the dimensions of the mapped_hidden_state and target head activations match
+            target_act = split_head_act[:, self._target_position, self.target.head, :]
+            if self._mapped_hidden_state.shape != target_act.shape:
+                logger.error('Cannot set activation of head %s in target model with shape'
+                             ' %s to patched activation of source model with shape %s!',
+                             self.target.head, list(target_act.shape),
+                             list(self._mapped_hidden_state.shape))
+                return
+            split_head_act[:, self._target_position, self.target.head, :] = self._mapped_hidden_state
+
+            # reshape and patch the full head activations
+            concat_head_act = einops.rearrange(
+                split_head_act, 'batch pos n_head d_head -> batch pos (n_head d_head)'
+            )
+            getattr(attn, self.HEAD_TARGET).input[0][0] = concat_head_act
+            return
+
+        layer.output[0][:, self._target_position, :] = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())
         for _ in range(self.target.max_new_tokens - 1):
