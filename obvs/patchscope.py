@@ -32,106 +32,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Sequence
 
 import torch
 from nnsight import LanguageModel
 from tqdm import tqdm
 
 from obvs.logging import logger
-from obvs.patchscope_base import PatchscopeBase
-
-
-@dataclass
-class SourceContext:
-    """
-    Source context for the patchscope
-    """
-    _prompt: str | torch.Tensor = field(init=False, repr=False, default="<|endoftext|>")
-    _text_prompt: str = field(init=False, repr=False)
-    _soft_prompt: torch.Tensor | None = field(init=False, repr=False)
-
-    prompt: str | torch.Tensor
-    position: Sequence[int] | None = None
-    layer: int = -1
-    model_name: str = "gpt2"
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # This overrides the `prompt` field
-    # See https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python
-    @property
-    def prompt(self) -> str | torch.Tensor:
-        """
-        The prompt
-        """
-        return self._prompt
-
-    @prompt.setter
-    def prompt(self, value: str | torch.Tensor | None):
-        if isinstance(value, property):
-            # initial value not specified, use default
-            value = SourceContext._prompt
-
-        if value is None:
-            value = "<|endoftext|>"
-
-        if isinstance(value, torch.Tensor) and value.dim() != 2:
-            raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
-
-        self._prompt = value
-        if isinstance(value, torch.Tensor):
-            self._text_prompt = " ".join("_" * value.shape[0])
-            self._soft_prompt = value
-        else:
-            self._text_prompt = value
-            self._soft_prompt = None
-
-    @property
-    def text_prompt(self) -> str:
-        """
-        The text prompt input or generated from soft prompt
-        """
-        return self._text_prompt
-
-    @property
-    def soft_prompt(self) -> torch.Tensor | None:
-        """
-        The soft prompt input or None
-        """
-        return self._soft_prompt
-
-
-@dataclass
-class TargetContext(SourceContext):
-    """
-    Target context for the patchscope
-    Parameters identical to the source context, with the addition of
-    a mapping function and max_new_tokens to control generation length
-    """
-
-    mapping_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x
-    max_new_tokens: int = 10
-
-    @staticmethod
-    def from_source(
-        source: SourceContext,
-        mapping_function: Callable[[torch.Tensor], torch.Tensor] | None = None,
-        max_new_tokens: int = 10,
-    ) -> TargetContext:
-        """
-        Construct a target context from the source context
-        """
-
-        return TargetContext(
-            prompt=source.prompt,
-            position=source.position,
-            model_name=source.model_name,
-            layer=source.layer,
-            mapping_function=mapping_function or (lambda x: x),
-            max_new_tokens=max_new_tokens,
-            device=source.device,
-        )
+from obvs.patchscope_base import PatchscopeBase, SourceContext, TargetContext
 
 
 class ModelLoader:
