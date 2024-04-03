@@ -44,6 +44,14 @@ class TestContext:
         with pytest.raises(ValueError):
             SourceContext(prompt=torch.ones((1,2,3,4)))
 
+    @staticmethod
+    def test_prompt_type_must_be_str_or_tensor():
+        SourceContext(prompt=torch.ones(1, 2))
+        SourceContext(prompt="This is a prompt")
+
+        with pytest.raises(ValueError):
+            SourceContext(prompt=5)
+
 
 
 class TestPatchscope:
