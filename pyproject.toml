@@ -15,10 +15,9 @@ packages = [
 python = "^3.10.0"
 # Everything below here is alphabetically sorted
 ipykernel = "^6.28.0"
-torch = "^2.1.2"
-torchvision = "^0.16.2"
+torch = "^2.2.0"
 transformers = "^4.37.1"
-nnsight = "^0.2.0"
+nnsight = "^0.2.11"
 tiktoken = "^0.5.2"
 plotly = "^5.18.0"
 typer = "^0.9.0"
