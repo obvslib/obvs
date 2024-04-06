@@ -292,6 +292,13 @@ class Patchscope(PatchscopeBase):
                          ' head attribute: %s. Both need to be of the same type.', self.source.head,
                          self.target.head)
             return False
+
+        # currently, accessing single head activations is only supported for GPT2LMHead models
+        if (self.source.head is not None and 'gpt2' not in self.source.model_name or
+                self.target.head is not None and 'gpt2' not in self.target.model_name):
+            raise NotImplementedError('Accessing single head activations is currently only'
+                                      ' implemented for GPT2-style models')
+
         return True
 
     def run(self) -> None:
