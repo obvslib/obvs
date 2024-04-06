@@ -191,8 +191,8 @@ class Patchscope(PatchscopeBase):
                 # TODO: validate this with non GPT2 & GPTJ models
                 self.source_model.transformer.wte.output = self.source.soft_prompt
 
-            self._source_hidden_state = self.manipulate_source().save()
-            self.source_output = self.source_model.lm_head.output[0].save()
+            self._source_hidden_state = self.manipulate_source().detach().save()
+            self.source_output = self.source_model.lm_head.output[0].detach().save()
 
     def manipulate_source(self) -> torch.Tensor:
         """
@@ -247,7 +247,6 @@ class Patchscope(PatchscopeBase):
 
             self.manipulate_target()
 
-    @torch.no_grad
     def manipulate_target(self) -> None:
 
         # get the specified layer
