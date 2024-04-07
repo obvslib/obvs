@@ -171,14 +171,14 @@ class TestPatchscope:
         with patchscope.source_model.trace("a dog is a dog. a cat is a", remote=False):
             soft_prompt = patchscope.source_model.transformer.wte.output.save()
 
-        patchscope.source.prompt = soft_prompt.value[0, :, :] # remove batch dimension
-        patchscope.target.prompt = " ".join("_" * soft_prompt.shape[1]) # works for gpt2 & gptj, not sure about others
-
+        patchscope.source.prompt = soft_prompt.value
         patchscope.source.position = -1
-        patchscope.target.position = -1
-
         patchscope.source.layer = -1
+
+        patchscope.target.prompt = " ".join("_" * soft_prompt.shape[1]) # works for gpt2 & gptj, not sure about others
+        patchscope.target.position = -1
         patchscope.target.layer = -1
+        patchscope.target.max_new_tokens = 4
 
         patchscope.run()
 

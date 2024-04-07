@@ -76,16 +76,23 @@ class SourceContext:
         if value is None:
             value = "<|endoftext|>"
 
-        if isinstance(value, torch.Tensor) and value.dim() != 2:
-            raise ValueError(f"Soft prompt must have shape [pos, dmodel]. prompt.shape = {value.shape}")
-
-        self._prompt = value
         if isinstance(value, torch.Tensor):
-            self._text_prompt = " ".join("_" * value.shape[0])
+            if value.dim() == 2:
+                # Add batch dimension
+                value = torch.unsqueeze(value, 0)
+
+            if value.dim() != 3:
+                raise ValueError(f"Soft prompt must have shape [tokens_len, d_model] or [batch, tokens_len, d_model]. But prompt.shape is {value.shape}")
+
+            self._text_prompt = " ".join("_" * value.shape[1])
             self._soft_prompt = value
-        else:
+        elif isinstance(value, str):
             self._text_prompt = value
             self._soft_prompt = None
+        else:
+            raise ValueError(f"Unknown prompt type: {type(value)}")
+
+        self._prompt = value
 
     @property
     def text_prompt(self) -> str:
@@ -181,13 +188,15 @@ class Patchscope(PatchscopeBase):
 
         For each architecture, you need to know the name of the layers.
         """
-        with self.source_model.trace(self.source.text_prompt, remote=self.REMOTE) as _:
+        with self.source_model.trace(self.source.text_prompt, remote=self.REMOTE):
             if self.source.soft_prompt is not None:
                 # TODO: validate this with non GPT2 & GPTJ models
                 self.source_model.transformer.wte.output = self.source.soft_prompt
 
             self._source_hidden_state = self.manipulate_source().save()
             self.source_output = self.source_model.lm_head.output[0].save()
+
+        self._source_hidden_state = self._source_hidden_state.value
 
     def manipulate_source(self) -> torch.Tensor:
         """
@@ -222,7 +231,7 @@ class Patchscope(PatchscopeBase):
         ) as _:
             if self.target.soft_prompt is not None:
                 # Not sure if this works with mamba and other models
-                self.target_model.transformer.wte.output = self.source.soft_prompt
+                self.target_model.transformer.wte.output = self.target.soft_prompt
 
             self.manipulate_target()
 

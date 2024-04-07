@@ -7,8 +7,6 @@ import torch
 from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
-STUB_SOFT_PROMPT = torch.ones((1, 2))
-
 class TestContext:
 
     @staticmethod
@@ -36,14 +34,23 @@ class TestContext:
         assert target.mapping_function(tensor).equal(tensor + 1)
 
     @staticmethod
-    def test_soft_prompt_dimensions_must_be_two():
-        SourceContext(prompt=STUB_SOFT_PROMPT)
-
+    def test_soft_prompt_dimensions_must_be_two_or_three():
         with pytest.raises(ValueError):
             SourceContext(prompt=torch.ones((1,)))
 
+        SourceContext(prompt=torch.ones(1, 2))
+        SourceContext(prompt=torch.ones((1,2,3)))
+
         with pytest.raises(ValueError):
-            SourceContext(prompt=torch.ones((1,2,3)))
+            SourceContext(prompt=torch.ones((1,2,3,4)))
+
+    @staticmethod
+    def test_prompt_type_must_be_str_or_tensor():
+        SourceContext(prompt=torch.ones(1, 2))
+        SourceContext(prompt="This is a prompt")
+
+        with pytest.raises(ValueError):
+            SourceContext(prompt=5)
 
 
 
@@ -99,17 +106,17 @@ class TestPatchscope:
         patchscope.source.layer = 0
         patchscope.source_forward_pass()
 
-        assert patchscope._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
-        assert patchscope._source_hidden_state.value.shape[1] == len(
+        assert patchscope._source_hidden_state.shape[0] == 1  # Batch size, always 1
+        assert patchscope._source_hidden_state.shape[1] == len(
             patchscope.source_tokens,
         )  # Number of tokens
         assert (
-            patchscope._source_hidden_state.value.shape[2]
+            patchscope._source_hidden_state.shape[2]
             == patchscope.source_model.transformer.embed_dim
         )  # Embedding dimension
 
         patchscope.source.prompt = "a dog is a dog"
         patchscope.source_forward_pass()
-        assert patchscope._source_hidden_state.value.shape[1] == len(
+        assert patchscope._source_hidden_state.shape[1] == len(
             patchscope.source_tokens,
         )  # Number of tokens
