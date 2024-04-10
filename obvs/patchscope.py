@@ -269,11 +269,10 @@ class Patchscope(PatchscopeBase):
             # check if the dimensions of the mapped_hidden_state and target head activations match
             target_act = split_head_act[:, self._target_position, self.target.head, :]
             if self._mapped_hidden_state.shape != target_act.shape:
-                logger.error('Cannot set activation of head %s in target model with shape'
-                             ' %s to patched activation of source model with shape %s!',
-                             self.target.head, list(target_act.shape),
-                             list(self._mapped_hidden_state.shape))
-                return
+                raise ValueError(
+                    f'Cannot set activation of head {self.target.head} in target model with shape'
+                    f' {list(target_act.shape)} to patched activation of source model with shape'
+                    f' {list(self._mapped_hidden_state.shape)}!')
             split_head_act[:, self._target_position, self.target.head, :] = self._mapped_hidden_state
         else:
             layer.output[0][:, self._target_position, :] = self._mapped_hidden_state
@@ -308,8 +307,7 @@ class Patchscope(PatchscopeBase):
 
         # check before running
         if not self.check_patchscope_setup():
-            logger.error('Abort running patchscope')
-            return
+            raise ValueError('Cannot run patchscope with the provided arguments')
 
         self.clear()
         self.source_forward_pass()
