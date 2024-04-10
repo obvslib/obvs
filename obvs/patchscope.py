@@ -171,9 +171,9 @@ class Patchscope(PatchscopeBase):
 
         self.tokenizer = self.source_model.tokenizer
 
-        self.MODEL_SOURCE, self.LAYER_SOURCE, self.ATTN_SOURCE, self.HEAD_SOURCE = \
+        self.source_base_name, self.source_layer_name, self.source_attn_name, self.source_head_name = \
             self.get_model_specifics(self.source.model_name)
-        self.MODEL_TARGET, self.LAYER_TARGET, self.ATTN_TARGET, self.HEAD_TARGET = \
+        self.target_base_name, self.target_layer_name, self.target_attn_name, self.target_head_name = \
             self.get_model_specifics(self.target.model_name)
 
         self._target_outputs: list[torch.Tensor] = []
@@ -202,15 +202,15 @@ class Patchscope(PatchscopeBase):
         """
 
         # get the specified layer
-        layer = getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
+        layer = getattr(getattr(self.source_model, self.source_base_name), self.source_layer_name)[
             self.source.layer
         ]
 
         # if a head index is given, need to access the ATTN and HEAD components
         if self.source.head is not None:
-            attn = getattr(layer, self.ATTN_SOURCE)
+            attn = getattr(layer, self.source_attn_name)
             # TODO may not be .input for other models
-            head_act = getattr(attn, self.HEAD_SOURCE).input[0][0]
+            head_act = getattr(attn, self.source_head_name).input[0][0]
 
             # need to reshape the output into the specific heads
             head_act = einops.rearrange(head_act,
@@ -250,15 +250,15 @@ class Patchscope(PatchscopeBase):
     def manipulate_target(self) -> None:
 
         # get the specified layer
-        layer = getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
+        layer = getattr(getattr(self.target_model, self.target_base_name), self.target_layer_name)[
             self.target.layer
         ]
 
         # if a head index is given, need to access the ATTN and HEAD components
         if self.target.head is not None:
-            attn = getattr(layer, self.ATTN_TARGET)
+            attn = getattr(layer, self.target_attn_name)
             # TODO may not be .input for other models
-            concat_head_act = getattr(attn, self.HEAD_TARGET).input[0][0]
+            concat_head_act = getattr(attn, self.target_head_name).input[0][0]
 
             # need to reshape the output of head into the specific heads
             split_head_act = einops.rearrange(
