@@ -56,7 +56,7 @@ class SourceContext:
     prompt: str | torch.Tensor
     position: Sequence[int] | None = None
     layer: int = -1
-    head: int | None = None
+    head: Sequence[int] | None = None
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
