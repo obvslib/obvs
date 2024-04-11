@@ -99,6 +99,40 @@ fig = create_heatmap(
     title='Normalized logit difference after activation patching by layer and position'
 )
 fig.show()
-fig.write_html('activation_patching_ioi_results.html')
+fig.write_html('activation_patching_ioi_results_layer_pos.html')
+
+
+# Create logit diff by layer and head
+n_heads = 12
+
+# head-specific activation patching
+for layer in range(n_layers):
+    layer_metrics = []
+
+    # loop over all heads
+    for head in range(n_heads):
+
+        # set the layer and position for patching
+        patchscope.source.layer = layer
+        patchscope.target.layer = layer
+        patchscope.source.head = head
+        patchscope.target.head = head
+
+        # run the patchscope
+        patchscope.run()
+
+        # get the patched logits and calculate the logit difference
+        patched_logits = patchscope.logits()
+        layer_metrics.append(ioi_metric(patched_logits, clean_logits, corrupted_logits,
+                                        correct_index, incorrect_index).item())
+
+    metrics.append(layer_metrics)
+
+fig = create_heatmap(
+    list(range(head)), list(range(n_layers)), metrics, x_label='Head', y_label='Layer',
+    title='Normalized logit difference after activation patching by layer and head'
+)
+fig.show()
+fig.write_html('activation_patching_ioi_results_layer_head.html')
 
 

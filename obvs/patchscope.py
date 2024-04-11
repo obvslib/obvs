@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
+import einops
 import torch
 from nnsight import LanguageModel
 from tqdm import tqdm
@@ -55,6 +56,7 @@ class SourceContext:
     prompt: str | torch.Tensor
     position: Sequence[int] | None = None
     layer: int = -1
+    head: Sequence[int] | None = None
     model_name: str = "gpt2"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -135,6 +137,7 @@ class TargetContext(SourceContext):
             position=source.position,
             model_name=source.model_name,
             layer=source.layer,
+            head=source.head,
             mapping_function=mapping_function or (lambda x: x),
             max_new_tokens=max_new_tokens,
             device=source.device,
@@ -175,8 +178,10 @@ class Patchscope(PatchscopeBase):
 
         self.tokenizer = self.source_model.tokenizer
 
-        self.MODEL_SOURCE, self.LAYER_SOURCE = self.get_model_specifics(self.source.model_name)
-        self.MODEL_TARGET, self.LAYER_TARGET = self.get_model_specifics(self.target.model_name)
+        self.source_base_name, self.source_layer_name, self.source_attn_name, self.source_head_name = \
+            self.get_model_specifics(self.source.model_name)
+        self.target_base_name, self.target_layer_name, self.target_attn_name, self.target_head_name = \
+            self.get_model_specifics(self.target.model_name)
 
         self._target_outputs: list[torch.Tensor] = []
 
@@ -193,8 +198,8 @@ class Patchscope(PatchscopeBase):
                 # TODO: validate this with non GPT2 & GPTJ models
                 self.source_model.transformer.wte.output = self.source.soft_prompt
 
-            self._source_hidden_state = self.manipulate_source().save()
-            self.source_output = self.source_model.lm_head.output[0].save()
+            self._source_hidden_state = self.manipulate_source().detach().save()
+            self.source_output = self.source_model.lm_head.output[0].detach().save()
 
         self._source_hidden_state = self._source_hidden_state.value
 
@@ -204,9 +209,25 @@ class Patchscope(PatchscopeBase):
 
         NB: This is seperated out from the source_forward_pass method to allow for batching.
         """
-        return getattr(getattr(self.source_model, self.MODEL_SOURCE), self.LAYER_SOURCE)[
+
+        # get the specified layer
+        layer = getattr(getattr(self.source_model, self.source_base_name), self.source_layer_name)[
             self.source.layer
-        ].output[0][:, self._source_position, :]
+        ]
+
+        # if a head index is given, need to access the ATTN and HEAD components
+        if self.source.head is not None:
+            attn = getattr(layer, self.source_attn_name)
+            # TODO may not be .input for other models
+            head_act = getattr(attn, self.source_head_name).input[0][0]
+
+            # need to reshape the output into the specific heads
+            head_act = einops.rearrange(head_act,
+                                        'batch pos (n_head d_head) -> batch pos n_head d_head',
+                                        n_head=attn.num_heads, d_head=attn.head_dim)
+            return head_act[:, self._source_position, self.source.head, :]
+
+        return layer.output[0][:, self._source_position, :]
 
     def map(self) -> None:
         """
@@ -236,20 +257,67 @@ class Patchscope(PatchscopeBase):
             self.manipulate_target()
 
     def manipulate_target(self) -> None:
-        (
-            getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET)[
-                self.target.layer
-            ].output[0][:, self._target_position, :]
-        ) = self._mapped_hidden_state
+
+        # get the specified layer
+        layer = getattr(getattr(self.target_model, self.target_base_name), self.target_layer_name)[
+            self.target.layer
+        ]
+
+        # if a head index is given, need to access the ATTN and HEAD components
+        if self.target.head is not None:
+            attn = getattr(layer, self.target_attn_name)
+            # TODO may not be .input for other models
+            concat_head_act = getattr(attn, self.target_head_name).input[0][0]
+
+            # need to reshape the output of head into the specific heads
+            split_head_act = einops.rearrange(
+                concat_head_act, 'batch pos (n_head d_head) -> batch pos n_head d_head',
+                n_head=attn.num_heads, d_head=attn.head_dim
+            )
+
+            # check if the dimensions of the mapped_hidden_state and target head activations match
+            target_act = split_head_act[:, self._target_position, self.target.head, :]
+            if self._mapped_hidden_state.shape != target_act.shape:
+                raise ValueError(
+                    f'Cannot set activation of head {self.target.head} in target model with shape'
+                    f' {list(target_act.shape)} to patched activation of source model with shape'
+                    f' {list(self._mapped_hidden_state.shape)}!')
+            split_head_act[:, self._target_position, self.target.head, :] = self._mapped_hidden_state
+        else:
+            layer.output[0][:, self._target_position, :] = self._mapped_hidden_state
 
         self._target_outputs.append(self.target_model.lm_head.output[0].save())
         for _ in range(self.target.max_new_tokens - 1):
             self._target_outputs.append(self.target_model.lm_head.next().output[0].save())
 
+    def check_patchscope_setup(self) -> bool:
+        """ Check if patchscope is correctly set-up before running """
+
+        # head can be int or None, patchscope run is only possible if they have the same type
+        # TODO: Find out how to do it PEP8 compliant
+        if type(self.source.head) != type(self.target.head):
+            logger.error('Cannot run patchscope with source head attribute: %s and target'
+                         ' head attribute: %s. Both need to be of the same type.', self.source.head,
+                         self.target.head)
+            return False
+
+        # currently, accessing single head activations is only supported for GPT2LMHead models
+        if (self.source.head is not None and 'gpt2' not in self.source.model_name or
+                self.target.head is not None and 'gpt2' not in self.target.model_name):
+            raise NotImplementedError('Accessing single head activations is currently only'
+                                      ' implemented for GPT2-style models')
+
+        return True
+
     def run(self) -> None:
         """
         Run the patchscope
         """
+
+        # check before running
+        if not self.check_patchscope_setup():
+            raise ValueError('Cannot run patchscope with the provided arguments')
+
         self.clear()
         self.source_forward_pass()
         self.map()

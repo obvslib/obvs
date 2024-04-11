@@ -120,3 +120,25 @@ class TestPatchscope:
         assert patchscope._source_hidden_state.shape[1] == len(
             patchscope.source_tokens,
         )  # Number of tokens
+
+    @staticmethod
+    def test_source_forward_pass_with_attention_head_patching(patchscope):
+        patchscope.source.prompt = "a dog is a dog. a cat is a"
+
+        # This will set position to all tokens
+        patchscope.source.position = None
+
+        patchscope.source.layer = 0
+        # access head 0
+        patchscope.source.head = 0
+        patchscope.source_forward_pass()
+
+        assert patchscope._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
+        assert patchscope._source_hidden_state.value.shape[1] == len(
+            patchscope.source_tokens,
+        )  # Number of tokens
+        assert (
+            patchscope._source_hidden_state.value.shape[2]
+            == patchscope.source_model.transformer.h[0].attn.head_dim
+        )  # Head dimension
+
