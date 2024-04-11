@@ -1,18 +1,16 @@
 # obvs
 
-[![CI](https://github.com/jcoombes/obvs/actions/workflows/main.yaml/badge.svg)](https://github.com/jcoombes/obvs/actions/workflows/main.yaml)
+[![CI](https://github.com/obvslib/obvs/actions/workflows/main.yaml/badge.svg)](https://github.com/obvslib/obvs/actions/workflows/main.yaml)
 
 Making Transformers Obvious
 
 ## Project cheatsheet
 
-  - **pre-commit:** `pre-commit run --all-files`
-  - **pytest:** `pytest` or `pytest -s`
-  - **coverage:** `coverage run -m pytest` or `coverage html`
-  - **poetry sync:** `poetry install --no-root --sync`
-  - **updating requirements:** see [docs/updating_requirements.md](docs/updating_requirements.md)
-
-
+-   **pre-commit:** `pre-commit run --all-files`
+-   **pytest:** `pytest` or `pytest -s`
+-   **coverage:** `coverage run -m pytest` or `coverage html`
+-   **poetry sync:** `poetry install --no-root --sync`
+-   **updating requirements:** see [docs/updating_requirements.md](docs/updating_requirements.md)
 
 ## Initial project setup
 

@@ -137,9 +137,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # for prompt in prompts:
-    #     main(args.model_name, prompt, args.n, args.full)
-
     samples = []
     for example in shuffled_dataset.take(args.n):
         samples.append(example["text"])
