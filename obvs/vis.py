@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import plotly.graph_objects as go
-from typing import List
 
 
-def create_heatmap(x_data: List[str | int | float], y_data: List[str | int | float],
-                   values: List[float], title: str = '', cell_annotations: List[str] = None,
-                   x_label: str = '', y_label: str = '') -> go.Figure:
+def create_heatmap(
+    x_data: list[str | int | float],
+    y_data: list[str | int | float],
+    values: list[float],
+    title: str = "",
+    cell_annotations: list[str] = None,
+    x_label: str = "",
+    y_label: str = "",
+) -> go.Figure:
     """
     Create a heatmap with annotated cells. Set the x_ticks, y_ticks and title accordingly.
 
@@ -31,23 +36,37 @@ def create_heatmap(x_data: List[str | int | float], y_data: List[str | int | flo
     y_categories = {val: i for i, val in enumerate(y_data)}
     y_numeric = [y_categories[val] for val in y_data]
 
-    fig = go.Figure(data=go.Heatmap(
-        z=values,
-        x=x_numeric,
-        y=y_numeric,
-        hoverongaps=False,
-        text=cell_annotations,
-        texttemplate="%{text}",
-        textfont={"size": 20},
-        colorscale='Viridis'))
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=values,
+            x=x_numeric,
+            y=y_numeric,
+            hoverongaps=False,
+            text=cell_annotations,
+            texttemplate="%{text}",
+            textfont={"size": 20},
+            colorscale="Viridis",
+        ),
+    )
 
     fig.update_layout(
         title=title,
-        xaxis=dict(title=x_label, tickfont=dict(size=16), titlefont=dict(size=18), tickangle=-45,
-                   tickvals=list(x_categories.values()), ticktext=list(x_categories.keys())),
-        yaxis=dict(title=y_label, tickfont=dict(size=16), titlefont=dict(size=18),
-                   tickvals=list(y_categories.values()), ticktext=list(y_categories.keys())),
-        titlefont=dict(size=20)
+        xaxis=dict(
+            title=x_label,
+            tickfont=dict(size=16),
+            titlefont=dict(size=18),
+            tickangle=-45,
+            tickvals=list(x_categories.values()),
+            ticktext=list(x_categories.keys()),
+        ),
+        yaxis=dict(
+            title=y_label,
+            tickfont=dict(size=16),
+            titlefont=dict(size=18),
+            tickvals=list(y_categories.values()),
+            ticktext=list(y_categories.keys()),
+        ),
+        titlefont=dict(size=20),
     )
 
     return fig
@@ -111,5 +130,3 @@ def plot_surprisal(layers, values, std=None, title="Surprisal") -> go.Figure:
     )
 
     return fig
-
-

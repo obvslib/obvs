@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence
+from collections.abc import Sequence
 
 import torch
 
@@ -40,15 +40,19 @@ class PatchscopeBase(ABC):
 
     @property
     def _source_position(self) -> Sequence[int]:
-        return (self.source.position
-                if self.source.position is not None
-                else range(len(self.source_token_ids)))
+        return (
+            self.source.position
+            if self.source.position is not None
+            else range(len(self.source_token_ids))
+        )
 
     @property
     def _target_position(self) -> Sequence[int]:
-        return (self.target.position
-                if self.target.position is not None
-                else range(len(self.target_token_ids)))
+        return (
+            self.target.position
+            if self.target.position is not None
+            else range(len(self.target_token_ids))
+        )
 
     @property
     def source_token_ids(self) -> list[int]:
@@ -78,20 +82,20 @@ class PatchscopeBase(ABC):
         """
         return [self.tokenizer.decode(token) for token in self.target_token_ids]
 
-    def top_k_tokens(self, k: int=10) -> list[str]:
+    def top_k_tokens(self, k: int = 10) -> list[str]:
         """
         Return the top k tokens from the target model
         """
         token_ids = self._target_outputs[0].value[self.target.position, :].topk(k).indices.tolist()
         return [self.tokenizer.decode(token_id) for token_id in token_ids]
 
-    def top_k_logits(self, k: int=10) -> list[int]:
+    def top_k_logits(self, k: int = 10) -> list[int]:
         """
         Return the top k logits from the target model
         """
         return self._target_outputs[0].value[self.target.position, :].topk(k).values.tolist()
 
-    def top_k_probs(self, k: int=10) -> list[float]:
+    def top_k_probs(self, k: int = 10) -> list[float]:
         """
         Return the top k probabilities from the target model
         """
@@ -133,7 +137,8 @@ class PatchscopeBase(ABC):
     def full_output_tokens(self) -> list[str]:
         """
         Return the generated output from the target model
-        This is a bit hacky. Its not super well supported. I have to concatenate all the inputs and add the input tokens to them.
+        This is a bit hacky. Its not super well supported. I have to concatenate
+        all the inputs and add the input tokens to them.
         """
         token_ids = self._output_token_ids()
 
@@ -154,14 +159,16 @@ class PatchscopeBase(ABC):
         """
         Find the position of the substring tokens in the source prompt
 
-        Note: only works if substring's tokenization happens to match that of the source prompt's tokenization
+        Note: only works if substring's tokenization happens to match that of
+        the source prompt's tokenization
         """
         position, _ = self.source_position_tokens(substring)
         return position
 
     def source_position_tokens(self, substring: str) -> tuple[int, list[int]]:
         """
-        Find the position of a substring in the source prompt, and return the substring tokenized
+        Find the position of a substring in the source prompt, and return the
+        substring tokenized
 
         NB: The try: except block handles the difference between gpt2 and llama
         tokenization. Perhaps this can be better dealt with a seperate tokenizer
@@ -170,7 +177,9 @@ class PatchscopeBase(ABC):
         the best out of your model.
         """
         if substring not in self.source.text_prompt:
-            raise ValueError(f"Substring {substring} could not be found in {self.source.text_prompt}")
+            raise ValueError(
+                f"Substring {substring} could not be found in {self.source.text_prompt}",
+            )
 
         try:
             token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
@@ -183,14 +192,16 @@ class PatchscopeBase(ABC):
         """
         Find the position of the substring tokens in the target prompt
 
-        Note: only works if substring's tokenization happens to match that of the target prompt's tokenization
+        Note: only works if substring's tokenization happens to match that of
+        the target prompt's tokenization
         """
         position, _ = self.target_position_tokens(substring)
         return position
 
     def target_position_tokens(self, substring) -> tuple[int, list[int]]:
         """
-        Find the position of a substring in the target prompt, and return the substring tokenized
+        Find the position of a substring in the target prompt, and return the
+        substring tokenized
 
         NB: The try: except block handles the difference between gpt2 and llama
         tokenization. Perhaps this can be better dealt with a seperate tokenizer
@@ -199,7 +210,9 @@ class PatchscopeBase(ABC):
         the best out of your model.
         """
         if substring not in self.target.text_prompt:
-            raise ValueError(f"Substring {substring} could not be found in {self.target.text_prompt}")
+            raise ValueError(
+                f"Substring {substring} could not be found in {self.target.text_prompt}",
+            )
 
         try:
             token_ids = self.tokenizer.encode(substring, add_special_tokens=False)
@@ -230,7 +243,8 @@ class PatchscopeBase(ABC):
         Returns:
         - precision_at_1: Precision@1 metric result.
 
-        This is the evaluation method of the token identity from patchscopes: https://arxiv.org/abs/2401.06102
+        This is the evaluation method of the token identity from patchscopes:
+        https://arxiv.org/abs/2401.06102
         Its used for running an evaluation over large datasets.
         """
         predicted_token_index = torch.argmax(estimated_probs)
@@ -240,10 +254,14 @@ class PatchscopeBase(ABC):
     def compute_surprisal(self, estimated_probs: torch.Tensor, true_token_index):
         """
         Compute Surprisal metric. From the outputs of the target (patched) model
-        (estimated_probs) against the output of the source model, aka the 'true' token.
+        (estimated_probs) against the output of the source model, aka the 'true'
+        token.
+
         Args:
-        - estimated_probs: The estimated probabilities for each token as a torch.Tensor.
+        - estimated_probs: The estimated probabilities for each token as a
+        torch.Tensor.
         - true_token_index: The index of the true token in the vocabulary.
+
         Returns:
         - surprisal: Surprisal metric result.
         """

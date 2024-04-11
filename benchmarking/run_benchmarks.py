@@ -73,7 +73,7 @@ def read_results_file(results_file: str) -> dict:
     results = {}
 
     if not Path(results_file).exists():
-        return
+        return results
 
     # read results file
     with open(results_file) as csv_file:

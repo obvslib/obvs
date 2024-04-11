@@ -20,6 +20,7 @@ def patchscope_llama():
     return Patchscope(source_context, target_context)
 
 
+# pylint: disable=redefined-outer-name
 @pytest.fixture(autouse=True)
 def reset_patchscope_fixtures(patchscope: Patchscope):
     # TODO: should reset patchscope_llama fixture once it works in tests
