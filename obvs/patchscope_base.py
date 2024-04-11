@@ -227,11 +227,15 @@ class PatchscopeBase(ABC):
 
     @property
     def n_layers_source(self) -> int:
-        return len(getattr(getattr(self.source_model, self.MODEL_TARGET), self.LAYER_TARGET))
+        return len(
+            getattr(getattr(self.source_model, self.target_base_name), self.target_layer_name),
+        )
 
     @property
     def n_layers_target(self) -> int:
-        return len(getattr(getattr(self.target_model, self.MODEL_TARGET), self.LAYER_TARGET))
+        return len(
+            getattr(getattr(self.target_model, self.target_base_name), self.target_layer_name),
+        )
 
     def compute_precision_at_1(self, estimated_probs: torch.Tensor, true_token_index):
         """

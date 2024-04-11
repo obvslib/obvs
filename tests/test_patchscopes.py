@@ -133,11 +133,11 @@ class TestPatchscope:
         patchscope.source.head = 0
         patchscope.source_forward_pass()
 
-        assert patchscope._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
-        assert patchscope._source_hidden_state.value.shape[1] == len(
+        assert patchscope._source_hidden_state.shape[0] == 1  # Batch size, always 1
+        assert patchscope._source_hidden_state.shape[1] == len(
             patchscope.source_tokens,
         )  # Number of tokens
         assert (
-            patchscope._source_hidden_state.value.shape[2]
+            patchscope._source_hidden_state.shape[2]
             == patchscope.source_model.transformer.h[0].attn.head_dim
         )  # Head dimension
