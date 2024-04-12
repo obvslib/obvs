@@ -10,6 +10,7 @@ https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-len
 """
 
 from obvs.lenses import ClassicLogitLens, PatchscopeLogitLens
+from obvs.patchscope import ModelLoader
 
 prompt = """Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training
 on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic
@@ -17,7 +18,7 @@ in architecture, this method still requires task-specific fine-tuning datasets o
 thousands of examples. By contrast, humans can generally perform a new language task from only
 a few examples or from simple instructions – something which current NLP systems still largely
 struggle to do. Here we show that scaling up language models greatly improves task-agnostic,
-few-shot performance, sometimes even reaching competitiveness with prior state-of-the-art 
+few-shot performance, sometimes even reaching competitiveness with prior state-of-the-art
 finetuning approaches. Specifically, we train GPT-3, an autoregressive language model with 175 billion
 parameters, 10x more than any previous non-sparse language model, and test its performance in
 the few-shot setting. For all tasks, GPT-3 is applied without any gradient updates or fine-tuning,
@@ -37,12 +38,24 @@ substring = "Specifically, we train GPT-3, an autoregressive language model with
 layers = list(range(0, 12))
 
 # models: gpt2 125m, gpt2 1B, gpt-neo 125m
-for model_name in ['gpt2', 'EleutherAI/gpt-neo-125M', 'gpt2-xl']:
+# for model_name in ['gpt2', 'EleutherAI/gpt-neo-125M', 'gpt2-xl']:
+for model_name in ['gpt2']:
+
 
     # run on both, classic and Patschcope logit lens
     for ll_type, ll_class in [('patchscope_logit_lens', PatchscopeLogitLens),
                               ('classic_logit_lens', ClassicLogitLens)]:
-        ll = ll_class(model_name, prompt, 'auto')
-        ll.run(substring, layers)
-        fig = ll.visualize()
+        if ll_type == 'classic_logit_lens':
+            ll = ll_class(model_name, prompt, 'auto')
+            ll.run(substring, layers)
+            fig = ll.visualize()
+        elif ll_type == 'patchscope_logit_lens':
+            ll = ll_class(model_name, prompt, 'auto', layers, substring)
+            # token_ids = ll.patchscope.tokenizer.encode(substring, add_special_tokens=False)
+            token_ids = ll.substring_tokens
+            for i in range(len(token_ids)):
+                ll.run(i)
+            fig = ll.visualize()
+        else:
+            raise ValueError(f"Unknown logit lens type: {ll_type}")
         fig.write_html(f'{model_name.replace("-", "_").replace("/", "_").lower()}_{ll_type}_logits_top_preds.html')

@@ -280,15 +280,17 @@ class BaseLogitLens:
             # each position associated with that layer
             for i in range(top_pred_idcs.shape[0]):
                 top_preds.append(self.patchscope.tokenizer.batch_decode(top_pred_idcs[i]))
-
+                import pdb
+                pdb.set_trace()
             x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
                        for tok in self.data['substring_tokens']]
-            y_ticks = [f'{self.patchscope.MODEL_SOURCE}_{self.patchscope.LAYER_SOURCE}{i}'
+            y_ticks = [f'{self.patchscope.source_base_name}_{self.patchscope.source_layer_name}{i}'
                        for i in self.data['layers']]
+            # y_ticks = [i for i in self.data['layers']]
 
             # create a heatmap with the top logits and predicted tokens
 
-            fig = create_heatmap(x_ticks, y_ticks, logits, cell_annotations=preds,
+            fig = create_heatmap(x_ticks, y_ticks, top_logits, cell_annotations=top_preds,
                                  title='Top predicted token and its logit')
 
         if file_name:
@@ -311,41 +313,52 @@ class PatchscopeLogitLens(BaseLogitLens):
             to the last layer of that same model. It is equal to taking the hidden state and
             applying unembed to it.
         """
+    def __init__(self, model: str, prompt: str, device: str, layers: List[int], substring: str):
+        super().__init__(model, prompt, device)
+        # self.layers = layers
+        # self.substring = substring
+        start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
+        # assert position < len(substring_tokens), 'Position out of bounds!'
+        self.start_pos = start_pos
+        self.layers = layers
+        self.substring_tokens = substring_tokens
+        self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
+                                          self.patchscope.tokenizer.vocab_size)
 
-    def run(self, substring: str, layers: List[int]):
-        """ Run the logit lens for each layer in layers and each token in substring.
+    def run(self, position: int):
+        """ Run the logit lens for each layer in layers, for a specific position in the prompt.
 
         Args:
             substring (str): Substring of the prompt for which the top prediction and logits
                 should be calculated.
             layers (List[int]): Indices of Transformer Layers for which the lens should be applied
+            position (int): Position in the prompt for which the lens should be applied
         """
-
         # get starting position and tokens of substring
-        start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
+        assert position < len(self.substring_tokens), 'Position out of bounds!'
 
         # initialize tensor for logits
-        self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
-                                          self.patchscope.tokenizer.vocab_size)
+        # self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
+        #                                   self.patchscope.tokenizer.vocab_size)
 
         # loop over each layer and token in substring
-        for i, layer in enumerate(layers):
-            for j in range(len(substring_tokens)):
+        for i, layer in enumerate(self.layers):
+            print (f'layer loop is at {i}')
 
-                self.patchscope.source.layer = layer
-                self.patchscope.source.position = start_pos + j
-                self.patchscope.target.position = start_pos + j
-                self.patchscope.run()
+            self.patchscope.source.layer = layer
+            self.patchscope.source.position = self.start_pos + position
+            self.patchscope.target.position = self.start_pos + position
+            self.patchscope.run()
 
-                self.data['logits'][i, j, :] = self.patchscope.logits()[start_pos + j].to('cpu')
+            self.data['logits'][i, position, :] = self.patchscope.logits()[self.start_pos + position].to('cpu')
 
             # empty CDUA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
 
         # detach logits, save tokens from substring and layer indices
         self.data['logits'] = self.data['logits'].detach()
-        self.data['substring_tokens'] = substring_tokens
-        self.data['layers'] = layers
+        self.data['substring_tokens'] = self.substring_tokens
+        self.data['layers'] = self.layers
 
 
 class ClassicLogitLens(BaseLogitLens):
@@ -378,8 +391,8 @@ class ClassicLogitLens(BaseLogitLens):
             with self.patchscope.source_model.trace(self.patchscope.source.prompt) as _:
 
                 # get the appropriate sub-module and block from source_model
-                sub_mod = getattr(self.patchscope.source_model, self.patchscope.MODEL_SOURCE)
-                block = getattr(sub_mod, self.patchscope.LAYER_SOURCE)
+                sub_mod = getattr(self.patchscope.source_model, self.patchscope.source_base_name)
+                block = getattr(sub_mod, self.patchscope.source_layer_name)
 
                 # get hidden state after specified layer
                 hidden = block[layer].output[0]
