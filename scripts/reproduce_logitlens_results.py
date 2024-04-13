@@ -44,7 +44,6 @@ substring = (
 layers = list(range(0, 12))
 
 # models: gpt2 125m, gpt2 1B, gpt-neo 125m
-<<<<<<< HEAD
 # for model_name in ['gpt2', 'EleutherAI/gpt-neo-125M', 'gpt2-xl']:
 for model_name in ['gpt2']:
 
@@ -66,17 +65,3 @@ for model_name in ['gpt2']:
         else:
             raise ValueError(f"Unknown logit lens type: {ll_type}")
         fig.write_html(f'{model_name.replace("-", "_").replace("/", "_").lower()}_{ll_type}_logits_top_preds.html')
-=======
-for model_name in ["gpt2", "EleutherAI/gpt-neo-125M", "gpt2-xl"]:
-    # run on both, classic and Patschcope logit lens
-    for ll_type, ll_class in [
-        ("patchscope_logit_lens", PatchscopeLogitLens),
-        ("classic_logit_lens", ClassicLogitLens),
-    ]:
-        ll = ll_class(model_name, prompt, "auto")
-        ll.run(substring, layers)
-        fig = ll.visualize()
-        fig.write_html(
-            f'{model_name.replace("-", "_").replace("/", "_").lower()}_{ll_type}_logits_top_preds.html',
-        )
->>>>>>> main
