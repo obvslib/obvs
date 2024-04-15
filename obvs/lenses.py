@@ -280,8 +280,6 @@ class BaseLogitLens:
             # each position associated with that layer
             for i in range(top_pred_idcs.shape[0]):
                 top_preds.append(self.patchscope.tokenizer.batch_decode(top_pred_idcs[i]))
-                import pdb
-                pdb.set_trace()
             x_ticks = [f'{self.patchscope.tokenizer.decode(tok)}'
                        for tok in self.data['substring_tokens']]
             y_ticks = [f'{self.patchscope.source_base_name}_{self.patchscope.source_layer_name}{i}'
