@@ -44,9 +44,7 @@ substring = (
 layers = list(range(0, 12))
 
 # models: gpt2 125m, gpt2 1B, gpt-neo 125m
-# for model_name in ['gpt2', 'EleutherAI/gpt-neo-125M', 'gpt2-xl']:
-for model_name in ['gpt2']:
-
+for model_name in ['gpt2', 'EleutherAI/gpt-neo-125M', 'gpt2-xl']:
 
     # run on both, classic and Patschcope logit lens
     for ll_type, ll_class in [('patchscope_logit_lens', PatchscopeLogitLens),
@@ -57,7 +55,6 @@ for model_name in ['gpt2']:
             fig = ll.visualize()
         elif ll_type == 'patchscope_logit_lens':
             ll = ll_class(model_name, prompt, 'auto', layers, substring)
-            # token_ids = ll.patchscope.tokenizer.encode(substring, add_special_tokens=False)
             token_ids = ll.substring_tokens
             for i in range(len(token_ids)):
                 ll.run(i)

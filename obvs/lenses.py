@@ -275,6 +275,7 @@ class BaseLogitLens:
 
             # create NxM list of strings from the top predictions
             top_preds = []
+
             # loop over the layer dimension in top_preds, get a list of predictions for
             # each position associated with that layer
             for i in range(top_pred_idcs.shape[0]):
@@ -283,13 +284,10 @@ class BaseLogitLens:
                        for tok in self.data['substring_tokens']]
             y_ticks = [f'{self.patchscope.source_base_name}_{self.patchscope.source_layer_name}{i}'
                        for i in self.data['layers']]
-            # y_ticks = [i for i in self.data['layers']]
 
             # create a heatmap with the top logits and predicted tokens
-
             fig = create_heatmap(x_ticks, y_ticks, top_logits, cell_annotations=top_preds,
                                  title='Top predicted token and its logit')
-
         if file_name:
             fig.write_html(f'{file_name.replace(".html", "")}.html')
         return fig
@@ -311,11 +309,13 @@ class PatchscopeLogitLens(BaseLogitLens):
             applying unembed to it.
         """
     def __init__(self, model: str, prompt: str, device: str, layers: List[int], substring: str):
+        """
+        substring (str): Substring of the prompt for which the top prediction and logits should be calculated.
+        layers (List[int]): Indices of Transformer Layers for which the lens should be applied
+        """
+
         super().__init__(model, prompt, device)
-        # self.layers = layers
-        # self.substring = substring
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
-        # assert position < len(substring_tokens), 'Position out of bounds!'
         self.start_pos = start_pos
         self.layers = layers
         self.substring_tokens = substring_tokens
@@ -326,17 +326,10 @@ class PatchscopeLogitLens(BaseLogitLens):
         """ Run the logit lens for each layer in layers, for a specific position in the prompt.
 
         Args:
-            substring (str): Substring of the prompt for which the top prediction and logits
-                should be calculated.
-            layers (List[int]): Indices of Transformer Layers for which the lens should be applied
             position (int): Position in the prompt for which the lens should be applied
         """
         # get starting position and tokens of substring
         assert position < len(self.substring_tokens), 'Position out of bounds!'
-
-        # initialize tensor for logits
-        # self.data['logits'] = torch.zeros(len(layers), len(substring_tokens),
-        #                                   self.patchscope.tokenizer.vocab_size)
 
         # loop over each layer and token in substring
         for i, layer in enumerate(self.layers):
@@ -349,7 +342,7 @@ class PatchscopeLogitLens(BaseLogitLens):
 
             self.data['logits'][i, position, :] = self.patchscope.logits()[self.start_pos + position].to('cpu')
 
-            # empty CDUA cache to avoid filling of GPU memory
+            # empty CUDA cache to avoid filling of GPU memory
             torch.cuda.empty_cache()
 
         # detach logits, save tokens from substring and layer indices
