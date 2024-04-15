@@ -9,6 +9,8 @@ https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-len
 )
 """
 
+from __future__ import annotations
+
 from obvs.lenses import ClassicLogitLens, PatchscopeLogitLens
 from obvs.patchscope import ModelLoader
 
@@ -30,10 +32,14 @@ time, we also identify some datasets where GPT-3’s few-shot learning still str
 datasets where GPT-3 faces methodological issues related to training on large web corpora. Finally,
 we find that GPT-3 can generate samples of news articles which human evaluators have difficulty
 distinguishing from articles written by humans. We discuss broader societal impacts of this finding
-and of GPT-3 in general.""".replace("\n", " ")
+and of GPT-3 in general.""".replace(
+    "\n",
+    " ",
+)
 
-substring = "Specifically, we train GPT-3, an autoregressive language model with 175 billion " \
-            "parameters"
+substring = (
+    "Specifically, we train GPT-3, an autoregressive language model with 175 billion parameters"
+)
 
 layers = list(range(0, 12))
 

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import plotly.graph_objects as go
-from typing import List
 
 
-def create_heatmap(x_data: List[str | int | float], y_data: List[str | int | float],
-                   values: List[float], title: str = '', cell_annotations: List[str] = None,
-                   x_label: str = '', y_label: str = '') -> go.Figure:
+def create_heatmap(
+    x_data: list[str | int | float],
+    y_data: list[str | int | float],
+    values: list[float],
+    title: str = "",
+    cell_annotations: list[str] = None,
+    x_label: str = "",
+    y_label: str = "",
+) -> go.Figure:
     """
     Create a heatmap with annotated cells. Set the x_ticks, y_ticks and title accordingly.
 

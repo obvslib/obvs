@@ -18,6 +18,7 @@ class PrecisionAtKMetric(Metric):
         self.add_state("correct", default=torch.zeros(batch_size), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
+    # pylint: disable=arguments-differ
     def update(self, logits, true_token_index) -> None:
         batch_size = logits.shape[0]
         self.correct[:batch_size] += self.batch(logits, true_token_index, self.topk)
@@ -73,6 +74,7 @@ class SurprisalMetric(Metric):
         )
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
+    # pylint: disable=arguments-differ
     def update(self, logits, true_token_index) -> None:
         batch_size = logits.shape[0]
         self.surprisal[:batch_size] += self.batch(logits, true_token_index)

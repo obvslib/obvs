@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from obvs.patchscope import ModelLoader
-
 
 class TestPatchscope:
     @staticmethod
@@ -164,7 +162,6 @@ class TestPatchscope:
         # Assert the target has been patched to think a rat is a cat
         assert "cat" in patchscope.full_output()
 
-
     @staticmethod
     def test_soft_prompt(patchscope):
         soft_prompt = None
@@ -175,7 +172,9 @@ class TestPatchscope:
         patchscope.source.position = -1
         patchscope.source.layer = -1
 
-        patchscope.target.prompt = " ".join("_" * soft_prompt.shape[1]) # works for gpt2 & gptj, not sure about others
+        patchscope.target.prompt = " ".join(
+            "_" * soft_prompt.shape[1],
+        )  # works for gpt2 & gptj, not sure about others
         patchscope.target.position = -1
         patchscope.target.layer = -1
         patchscope.target.max_new_tokens = 4
@@ -183,7 +182,6 @@ class TestPatchscope:
         patchscope.run()
 
         assert "cat" in patchscope.output()[-1]
-
 
     @staticmethod
     @pytest.mark.skip(reason="This doesn't work")

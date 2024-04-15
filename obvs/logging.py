@@ -22,11 +22,11 @@ def set_tqdm_logging(exclude_loggers=None):
     # Get all existing loggers (including the root) and replace their handlers.
     loggers = [logging.root] + list(logging.root.manager.loggerDict.values())
 
-    for logger in loggers:
+    for a_logger in loggers:
         if (
-            isinstance(logger, logging.Logger) and logger.name not in exclude_loggers
+            isinstance(a_logger, logging.Logger) and a_logger.name not in exclude_loggers
         ):  # Exclude specified loggers
-            logger.handlers = [tqdm_handler]
+            a_logger.handlers = [tqdm_handler]
 
 
 # Now exclude your file logger by name when calling set_tqdm_logging

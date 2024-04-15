@@ -8,7 +8,6 @@ from obvs.patchscope import Patchscope, SourceContext, TargetContext
 
 
 class TestContext:
-
     @staticmethod
     def test_source_context_init():
         source = SourceContext("source")
@@ -39,10 +38,10 @@ class TestContext:
             SourceContext(prompt=torch.ones((1,)))
 
         SourceContext(prompt=torch.ones(1, 2))
-        SourceContext(prompt=torch.ones((1,2,3)))
+        SourceContext(prompt=torch.ones((1, 2, 3)))
 
         with pytest.raises(ValueError):
-            SourceContext(prompt=torch.ones((1,2,3,4)))
+            SourceContext(prompt=torch.ones((1, 2, 3, 4)))
 
     @staticmethod
     def test_prompt_type_must_be_str_or_tensor():
@@ -51,7 +50,6 @@ class TestContext:
 
         with pytest.raises(ValueError):
             SourceContext(prompt=5)
-
 
 
 class TestPatchscope:
@@ -94,7 +92,9 @@ class TestPatchscope:
     @staticmethod
     def test_source_tokens(patchscope):
         patchscope.source.prompt = "a dog is a dog. a cat is a"
-        assert patchscope.source_token_ids == patchscope.tokenizer.encode("a dog is a dog. a cat is a")
+        assert patchscope.source_token_ids == patchscope.tokenizer.encode(
+            "a dog is a dog. a cat is a",
+        )
 
     @staticmethod
     def test_source_forward_pass_creates_hidden_state(patchscope):
@@ -133,12 +133,11 @@ class TestPatchscope:
         patchscope.source.head = 0
         patchscope.source_forward_pass()
 
-        assert patchscope._source_hidden_state.value.shape[0] == 1  # Batch size, always 1
-        assert patchscope._source_hidden_state.value.shape[1] == len(
+        assert patchscope._source_hidden_state.shape[0] == 1  # Batch size, always 1
+        assert patchscope._source_hidden_state.shape[1] == len(
             patchscope.source_tokens,
         )  # Number of tokens
         assert (
-            patchscope._source_hidden_state.value.shape[2]
+            patchscope._source_hidden_state.shape[2]
             == patchscope.source_model.transformer.h[0].attn.head_dim
         )  # Head dimension
-
