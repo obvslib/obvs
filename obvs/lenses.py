@@ -317,10 +317,10 @@ class PatchscopeLogitLens(BaseLogitLens):
             applying unembed to it.
     """
 
-    def __init__(self, model: str, prompt: str, device: str, layers: List[int], substring: str):
+    def __init__(self, model: str, prompt: str, device: str, layers: list[int], substring: str):
         """
         substring (str): Substring of the prompt for which the top prediction and logits should be calculated.
-        layers (List[int]): Indices of Transformer Layers for which the lens should be applied
+        layers (list[int]): Indices of Transformer Layers for which the lens should be applied
         """
 
         super().__init__(model, prompt, device)
@@ -329,7 +329,9 @@ class PatchscopeLogitLens(BaseLogitLens):
         self.layers = layers
         self.substring_tokens = substring_tokens
         self.data["logits"] = torch.zeros(
-            len(layers), len(substring_tokens), self.patchscope.tokenizer.vocab_size,
+            len(layers),
+            len(substring_tokens),
+            self.patchscope.tokenizer.vocab_size,
         )
 
     def run(self, position: int):
@@ -343,8 +345,6 @@ class PatchscopeLogitLens(BaseLogitLens):
 
         # loop over each layer and token in substring
         for i, layer in enumerate(self.layers):
-            print(f"layer loop is at {i}")
-
             self.patchscope.source.layer = layer
             self.patchscope.source.position = self.start_pos + position
             self.patchscope.target.position = self.start_pos + position
@@ -376,7 +376,7 @@ class ClassicLogitLens(BaseLogitLens):
         Args:
             substring (str): Substring of the prompt for which the top prediction and logits
                 should be calculated.
-            layers (List[int]): Indices of Transformer Layers for which the lens should be applied
+            layers (list[int]): Indices of Transformer Layers for which the lens should be applied
         """
 
         # get starting position and tokens of substring

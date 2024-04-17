@@ -28,14 +28,6 @@ def create_heatmap(
         go.Figure: The heatmap figure.
     """
 
-    # x_data and y_data is treated categorical in plotly heatmaps, if the lists contain
-    # duplicates, these will be removed -> prevent this
-    x_categories = {val: i for i, val in enumerate(x_data)}
-    [x_categories[val] for val in x_data]
-
-    y_categories = {val: i for i, val in enumerate(y_data)}
-    [y_categories[val] for val in y_data]
-
     # Ensure the outer list of values matches the length of y_data
     assert len(values) == len(y_data), "Length of values must match length of y_data"
     for row in values:
