@@ -362,6 +362,37 @@ class PatchscopeLogitLens(BaseLogitLens):
         self.data["substring_tokens"] = self.substring_tokens
         self.data["layers"] = self.layers
 
+    def compute_surprisal_at_position(self):
+        """Compute the surprisal for a specific position across all layers.
+
+        Args:
+            target_position (int): The position in the token sequence for which to compute surprisal.
+        """
+        if "logits" not in self.data:
+            raise ValueError("Logits data not found. Please run the lens first.")
+
+        # Assuming target_token_ids is known and corresponds to the actual token ID at target_position
+        # For this example, we assume a single target token ID for simplicity.
+        # In a real scenario, this would be dynamic or calculated based on input sequence.
+        target_token_id = (
+            self.target_token_id
+        )  # This should be set or calculated based on your specific use case.
+        target_position = self.target_token_position
+        logits_at_position = self.data["logits"][
+            :,
+            target_position,
+            :,
+        ]  # Shape: (n_layers, d_vocab)
+        probabilities_at_position = torch.softmax(torch.tensor(logits_at_position), dim=-1)
+
+        # Probability of the actual next token at the given position, for all layers
+        actual_token_probabilities = probabilities_at_position[:, target_token_id]
+
+        # Surprisal calculation: negative log probability
+        surprisals = -torch.log(actual_token_probabilities)
+
+        return surprisals.numpy()  # Convert to numpy array for convenience
+
 
 class ClassicLogitLens(BaseLogitLens):
     """Implementation of LogitLens in standard fashion.
@@ -415,3 +446,34 @@ class ClassicLogitLens(BaseLogitLens):
         self.data["logits"] = self.data["logits"].detach()
         self.data["substring_tokens"] = substring_tokens
         self.data["layers"] = layers
+
+    def compute_surprisal_at_position(self):
+        """Compute the surprisal for a specific position across all layers.
+
+        Args:
+            target_position (int): The position in the token sequence for which to compute surprisal.
+        """
+        if "logits" not in self.data:
+            raise ValueError("Logits data not found. Please run the lens first.")
+
+        # Assuming target_token_ids is known and corresponds to the actual token ID at target_position
+        # For this example, we assume a single target token ID for simplicity.
+        # In a real scenario, this would be dynamic or calculated based on input sequence.
+        target_token_id = (
+            self.target_token_id
+        )  # This should be set or calculated based on your specific use case.
+        target_position = self.target_token_position
+        logits_at_position = self.data["logits"][
+            :,
+            target_position,
+            :,
+        ]  # Shape: (n_layers, d_vocab)
+        probabilities_at_position = torch.softmax(torch.tensor(logits_at_position), dim=-1)
+
+        # Probability of the actual next token at the given position, for all layers
+        actual_token_probabilities = probabilities_at_position[:, target_token_id]
+
+        # Surprisal calculation: negative log probability
+        surprisals = -torch.log(actual_token_probabilities)
+
+        return surprisals.numpy()  # Convert to numpy array for convenience
