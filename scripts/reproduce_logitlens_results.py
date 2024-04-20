@@ -50,7 +50,7 @@ for model_name in ["gpt2", "EleutherAI/gpt-neo-125M", "gpt2-xl"]:
         ("classic_logit_lens", ClassicLogitLens),
     ]:
         if ll_type == "classic_logit_lens":
-            ll = ll_class(model_name, prompt, "auto")
+            ll = ll_class(model_name, prompt, "auto", layers, substring)
             ll.run(substring, layers)
             fig = ll.visualize()
         elif ll_type == "patchscope_logit_lens":
