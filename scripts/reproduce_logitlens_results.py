@@ -49,9 +49,18 @@ for model_name in ["gpt2", "EleutherAI/gpt-neo-125M", "gpt2-xl"]:
         ("patchscope_logit_lens", PatchscopeLogitLens),
         ("classic_logit_lens", ClassicLogitLens),
     ]:
-        ll = ll_class(model_name, prompt, "auto")
-        ll.run(substring, layers)
-        fig = ll.visualize()
+        if ll_type == "classic_logit_lens":
+            ll = ll_class(model_name, prompt, "auto", layers, substring)
+            ll.run(substring, layers)
+            fig = ll.visualize()
+        elif ll_type == "patchscope_logit_lens":
+            ll = ll_class(model_name, prompt, "auto", layers, substring)
+            token_ids = ll.substring_tokens
+            for i in range(len(token_ids)):
+                ll.run(i)
+            fig = ll.visualize()
+        else:
+            raise ValueError(f"Unknown logit lens type: {ll_type}")
         fig.write_html(
             f'{model_name.replace("-", "_").replace("/", "_").lower()}_{ll_type}_logits_top_preds.html',
         )

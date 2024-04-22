@@ -28,19 +28,20 @@ def create_heatmap(
         go.Figure: The heatmap figure.
     """
 
-    # x_data and y_data is treated categorical in plotly heatmaps, if the lists contain
-    # duplicates, these will be removed -> prevent this
-    x_categories = {val: i for i, val in enumerate(x_data)}
-    x_numeric = [x_categories[val] for val in x_data]
+    # Ensure the outer list of values matches the length of y_data
+    assert len(values) == len(y_data), "Length of values must match length of y_data"
+    for row in values:
+        assert len(row) == len(x_data), "Each row in values must match the length of x_data"
 
-    y_categories = {val: i for i, val in enumerate(y_data)}
-    y_numeric = [y_categories[val] for val in y_data]
+    # Use ordered indexing to accommodate non-unique labels
+    x_ticks = list(range(len(x_data)))
+    y_ticks = list(range(len(y_data)))
 
     fig = go.Figure(
         data=go.Heatmap(
             z=values,
-            x=x_numeric,
-            y=y_numeric,
+            x=x_ticks,
+            y=y_ticks,
             hoverongaps=False,
             text=cell_annotations,
             texttemplate="%{text}",
@@ -56,15 +57,15 @@ def create_heatmap(
             tickfont=dict(size=16),
             titlefont=dict(size=18),
             tickangle=-45,
-            tickvals=list(x_categories.values()),
-            ticktext=list(x_categories.keys()),
+            tickvals=x_ticks,
+            ticktext=x_data,
         ),
         yaxis=dict(
             title=y_label,
             tickfont=dict(size=16),
             titlefont=dict(size=18),
-            tickvals=list(y_categories.values()),
-            ticktext=list(y_categories.keys()),
+            tickvals=y_ticks,
+            ticktext=y_data,
         ),
         titlefont=dict(size=20),
     )
