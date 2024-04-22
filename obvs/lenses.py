@@ -229,7 +229,7 @@ class BaseLogitLens:
     but share the same visualization.
     """
 
-    def __init__(self, model: str, prompt: str, device: str):
+    def __init__(self, model: str, prompt: str, device: str, layers: list[int], substring: str):
         """Constructor. Setup a Patchscope object with Source and Target context.
             The target context is equal to the source context, apart from the layer.
 
@@ -238,6 +238,9 @@ class BaseLogitLens:
                 package
             prompt (str): The prompt to be analyzed
             device (str): Device on which the model should be run: e.g. cpu, auto
+            layers (list[int]): Indices of Transformer Layers for which the lens should be applied
+            substring (str): Substring of the prompt for which the top prediction and logits
+                should be calculated
         """
 
         self.model_name = model
@@ -252,6 +255,10 @@ class BaseLogitLens:
 
         # create Patchscope object
         self.patchscope = Patchscope(source_context, target_context)
+        start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
+        self.start_pos = start_pos
+        self.layers = layers
+        self.substring_tokens = substring_tokens
         self.data = {}
 
     def visualize(self, kind: str = "top_logits_preds", file_name: str = "") -> Figure:
@@ -323,14 +330,10 @@ class PatchscopeLogitLens(BaseLogitLens):
         layers (list[int]): Indices of Transformer Layers for which the lens should be applied
         """
 
-        super().__init__(model, prompt, device)
-        start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
-        self.start_pos = start_pos
-        self.layers = layers
-        self.substring_tokens = substring_tokens
+        super().__init__(model, prompt, device, layers, substring)
         self.data["logits"] = torch.zeros(
-            len(layers),
-            len(substring_tokens),
+            len(self.layers),
+            len(self.substring_tokens),
             self.patchscope.tokenizer.vocab_size,
         )
 
