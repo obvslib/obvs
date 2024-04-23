@@ -334,7 +334,7 @@ class PatchscopeLogitLens(BaseLogitLens):
         self.data["logits"] = torch.zeros(
             len(self.layers),
             len(self.substring_tokens),
-            self.patchscope.tokenizer.vocab_size,
+            self.patchscope.source_model.lm_head.out_features,  # not vocab size, as gpt-j embedding dimension different to tokenizer vocab size
         )
 
     def run(self, position: int):
@@ -417,10 +417,11 @@ class ClassicLogitLens(BaseLogitLens):
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
         # initialize tensor for logits
+
         self.data["logits"] = torch.zeros(
             len(layers),
             len(substring_tokens),
-            self.patchscope.tokenizer.vocab_size,
+            self.patchscope.source_model.lm_head.out_features,  # not vocab size, as gpt-j embedding dimension different to tokenizer vocab size
         )
 
         # loop over all layers

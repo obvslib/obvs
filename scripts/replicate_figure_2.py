@@ -7,11 +7,24 @@ import warnings
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import torch
 from tqdm import tqdm
 from transformers import AutoConfig
 
-from obvs.lenses import ClassicLogitLens, PatchscopeLogitLens
+from obvs.lenses import ClassicLogitLens, PatchscopeLogitLens, TokenIdentity
 from obvs.patchscope import ModelLoader
+
+torch.cuda.empty_cache()
+
+model_names = {
+    "llamatiny": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
+    "llama": "meta-llama/Llama-2-13b-hf",
+    "gpt2": "gpt2",
+    "mamba": "MrGonao/delphi-mamba-100k",
+    "mistral": "mistralai/Mistral-7B-v0.1",
+    "gptj": "EleutherAI/gpt-j-6B",
+    "gemma": "google/gemma-2b",
+}
 
 # Construct the path to the file
 file_path = "data/processed/sentences.json"
@@ -24,31 +37,51 @@ with open(file_path) as file:
 device = "gpu"
 model_name = "gpt2"
 # Load the model
-model = ModelLoader.load(model_name, device)
+model = ModelLoader.load(model_names[model_name], device)
 # Load the model configuration
-config = AutoConfig.from_pretrained("gpt2")
+config = AutoConfig.from_pretrained(model_names[model_name])
 # Get the number of layers
 num_layers = config.num_hidden_layers
 # Define the layers
 layers = list(range(0, num_layers))
 # Define the number of sentences to run
-test_amount = 2
+test_amount = 100
 # Initialize the arrays to store the surprisal values
 surprisals_log_classic_ll = np.zeros((test_amount, num_layers))
 surprisals_log_patchscope_ll = np.zeros((test_amount, num_layers))
-
+surprisals_log_ti = np.zeros((test_amount, num_layers))
 warnings.filterwarnings("ignore")  # Ignore all warnings
 
 # Loop through the data
 for index, (sentence, _split) in enumerate(tqdm(data[0:test_amount])):
+    # Token Identity pre-processing
+    # Truncate sentence for token identity
+    truncated_sentence = sentence
+    # Make sure it ends on a space
+    truncated_sentence = truncated_sentence[: truncated_sentence.rfind(" ")]
+    # Strip the spaces
+    truncated_sentence = truncated_sentence.strip()
+
     # Tokenize the sentence
     tokenized_sentence = model.tokenizer.encode(sentence)
     # Get a random position in the sentence
     rand_position = random.randrange(0, len(tokenized_sentence) - 2)
 
+    # Initialize the Token Identity Lens
+    ti = TokenIdentity("", model_names[model_name], device="cpu")
+    source_layers = range(ti._patchscope.n_layers_source)
+    target_layers = range(ti._patchscope.n_layers_target)
+    full = False
+    ti._patchscope.source.prompt = truncated_sentence
+    ti.run_and_compute(
+        source_layers=source_layers,
+        target_layers=target_layers if full else None,
+    )
+    surprisals_log_ti[index, :] = ti.surprisal
+
     # Initialize the Classic and Patchscope Logit Lenses
-    ClassicLL = ClassicLogitLens(model_name, sentence, "auto", layers, sentence)
-    PatchscopeLL = PatchscopeLogitLens(model_name, sentence, "auto", layers, sentence)
+    ClassicLL = ClassicLogitLens(model_names[model_name], sentence, "auto", layers, sentence)
+    PatchscopeLL = PatchscopeLogitLens(model_names[model_name], sentence, "auto", layers, sentence)
 
     # Run the Classic and Patchscope Logit Lenses
     ClassicLL.run(sentence, layers)
@@ -67,7 +100,12 @@ for index, (sentence, _split) in enumerate(tqdm(data[0:test_amount])):
     surprisals_log_patchscope_ll[index, :] = surprisals_across_layers_patchscope_LL
 
 
-def save_surprisals_to_csv(surprisals_log_classic_ll, surprisals_log_patchscope_ll, num_layers):
+def save_surprisals_to_csv(
+    surprisals_log_classic_ll,
+    surprisals_log_patchscope_ll,
+    surprisals_log_ti,
+    num_layers,
+):
     df_classic = pd.DataFrame(
         surprisals_log_classic_ll,
         columns=[f"Layer {i}" for i in range(num_layers)],
@@ -76,10 +114,16 @@ def save_surprisals_to_csv(surprisals_log_classic_ll, surprisals_log_patchscope_
         surprisals_log_patchscope_ll,
         columns=[f"Layer {i}" for i in range(num_layers)],
     )
+    df_ti = pd.DataFrame(
+        surprisals_log_ti,
+        columns=[f"Layer {i}" for i in range(num_layers)],
+    )
     df_classic["Lens Type"] = "Classic"
     df_patchscope["Lens Type"] = "Patchscope"
-    df_total = pd.concat([df_classic, df_patchscope], axis=0)
-    df_total.to_csv("surprisals.csv", index=False)
+    df_ti["Lens Type"] = "Token Identity"
+
+    df_total = pd.concat([df_classic, df_patchscope, df_ti], axis=0)
+    df_total.to_csv("surprisals_fig_2.csv", index=False)
 
 
 def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
@@ -96,10 +140,12 @@ def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
     # Separate data for plotting
     df_classic = df_total[df_total["Lens Type"] == "Classic"]
     df_patchscope = df_total[df_total["Lens Type"] == "Patchscope"]
+    df_ti = df_total[df_total["Lens Type"] == "Token Identity"]
 
     # Average surprisal values across sentences for each layer
     classic_means = df_classic.drop(columns=["Lens Type"]).mean()
     patchscope_means = df_patchscope.drop(columns=["Lens Type"]).mean()
+    ti_means = df_ti.drop(columns=["Lens Type"]).mean()
 
     # Create line traces
     trace_classic = go.Scatter(
@@ -119,6 +165,15 @@ def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
         line=dict(width=2),
     )
 
+    trace_ti = go.Scatter(
+        x=np.arange(len(ti_means)),
+        y=ti_means,
+        mode="lines+markers",
+        name="Token Identity Lens",
+        marker=dict(color="green"),
+        line=dict(width=2),
+    )
+
     # Configure the layout of the plot
     layout = go.Layout(
         title="Average Surprisal Values Across Layers",
@@ -130,11 +185,16 @@ def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
     )
 
     # Create figure with data and layout
-    fig = go.Figure(data=[trace_classic, trace_patchscope], layout=layout)
+    fig = go.Figure(data=[trace_classic, trace_patchscope, trace_ti], layout=layout)
 
     # Save the plot
     fig.write_html(output_html_path)
 
 
-save_surprisals_to_csv(surprisals_log_classic_ll, surprisals_log_patchscope_ll, num_layers)
-plot_surprisals_and_save_fig("surprisals.csv", "surprisal_plot.html")
+save_surprisals_to_csv(
+    surprisals_log_classic_ll,
+    surprisals_log_patchscope_ll,
+    surprisals_log_ti,
+    num_layers,
+)
+plot_surprisals_and_save_fig("surprisals_fig_2.csv", "surprisal_plot.html")
