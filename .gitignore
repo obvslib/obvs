@@ -47,3 +47,8 @@ pyrightconfig.json
 # https://www.gitignore.io/
 /experiments/
 /utils/
+
+*.npy
+*.png
+*.html
+*.json

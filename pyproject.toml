@@ -6,32 +6,35 @@ name = "obvs"
 version = "0.0.1"
 description = "Making Transformers Obvious"
 authors = ["Jamie Coombes <jamie@example.com>"]
-license = "UNLICENSED"
-classifiers = ["Private :: Do Not Upload"]
-packages = [
-  # { include = "obvs" },
-  { include = "obvspython" },
-  # Add more packages here, e.g.
-  # { include = "module_name", from = "obvs" },
-]
+license = "MIT"
+packages = [{ include = "obvs" }]
 
 [tool.poetry.dependencies]
 python = "^3.10.0"
 # Everything below here is alphabetically sorted
 ipykernel = "^6.28.0"
-torch = "^2.1.2"
-torchvision = "^0.16.2"
+torch = "^2.2.0"
 transformers = "^4.37.1"
-nnsight = "^0.2.0"
+nnsight = "^0.2.11"
 tiktoken = "^0.5.2"
 plotly = "^5.18.0"
 typer = "^0.9.0"
 kaleido = "0.2.1"
+fsspec = "2023.9.2"
+ipython = "^8.22.2"
+ipdb = "^0.13.13"
+torchmetrics = "^1.3.1"
+einops = "^0.7.0"
+idna = "^3.7"
+jupyter = "^1.0.0"
+datasets = "^2.18.0"
+zstandard = "^0.22.0"
+nbstripout = "^0.7.1"
 
 [tool.poetry.dev-dependencies]
 # Everything below here is alphabetically sorted
 bandit = "^1.7.5"
-black = "^23.3.0"
+black = "^24.3.0"
 detect-secrets = "1.2.0"
 flake8 = "5.0.4"
 flake8-bugbear = "^23.3.12"
@@ -56,12 +59,11 @@ pytest = "^7.3.1"
 
 [tool.poetry.group.dev.dependencies]
 pyinstrument = "^4.6.2"
-huggingface-hub = {extras = ["cli"], version = "^0.20.3"}
+huggingface-hub = { extras = ["cli"], version = "^0.20.3" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
 ############
 # ✅ Linters
 ############
@@ -90,6 +92,25 @@ min-similarity-lines = 150
 max-statements = 89
 max-args = 22
 max-branches = 17
+disable = [
+  "fixme",
+  "invalid-name",                   # disable for now, will fix later in patchscope
+  "line-too-long",                  # already handled by black
+  "locally-disabled",
+  "logging-fstring-interpolation",
+  "missing-class-docstring",
+  "missing-function-docstring",
+  "missing-module-docstring",
+  "no-else-return",
+  "no-member",                      # disable for now, will fix later in patchscope_base
+  "protected-access",
+  "suppressed-message",
+  "too-few-public-methods",
+  "too-many-instance-attributes",   # already handled by black
+  "too-many-public-methods",
+  "use-dict-literal",
+  "attribute-defined-outside-init", # disable for now, will fix in lenses.py
+]
 # good-names = []
 # disable = []
 logging-format-style = "new"
