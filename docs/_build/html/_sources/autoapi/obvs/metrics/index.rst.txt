@@ -1,0 +1,71 @@
+:py:mod:`obvs.metrics`
+======================
+
+.. py:module:: obvs.metrics
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   obvs.metrics.PrecisionAtKMetric
+   obvs.metrics.SurprisalMetric
+
+
+
+
+.. py:class:: PrecisionAtKMetric(topk=10, dist_sync_on_step=False, batch_size=None)
+
+
+   Bases: :py:obj:`torchmetrics.Metric`
+
+   Compute Precision@k metric for a batch of estimated probabilities vs true token indices.
+   The update method takes in the top-k predicted token indices and the true token indices for each example in the batch.
+   The compute method returns the Precision@k metric result for the accumulated batches, where a correct prediction
+   is considered if the true token is present anywhere in the top-k predictions.
+
+   .. py:method:: update(logits, true_token_index) -> None
+
+      Override this method to update the state variables of your metric class.
+
+
+   .. py:method:: batch(logits, true_token_index, topk) -> torch.Tensor
+      :staticmethod:
+
+
+   .. py:method:: compute() -> torch.Tensor
+
+      Override this method to compute the final metric value.
+
+      This method will automatically synchronize state variables when running in distributed backend.
+
+
+
+
+.. py:class:: SurprisalMetric(dist_sync_on_step=False, batch_size=None)
+
+
+   Bases: :py:obj:`torchmetrics.Metric`
+
+   Compute Surprisal metric for a batch of estimated probabilities vs true token indices.
+   The update method takes in the estimated probabilities and the true token indices for each example in the batch.
+   The compute method returns the average Surprisal metric result for the accumulated batches.
+
+   .. py:method:: update(logits, true_token_index) -> None
+
+      Override this method to update the state variables of your metric class.
+
+
+   .. py:method:: batch(logits, true_token_index) -> torch.Tensor
+      :staticmethod:
+
+
+   .. py:method:: compute() -> torch.Tensor
+
+      Override this method to compute the final metric value.
+
+      This method will automatically synchronize state variables when running in distributed backend.

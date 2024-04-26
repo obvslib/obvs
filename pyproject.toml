@@ -13,7 +13,7 @@ packages = [{ include = "obvs" }]
 python = "^3.10.0"
 # Everything below here is alphabetically sorted
 ipykernel = "^6.28.0"
-torch = "^2.2.0"
+torch = "==2.2.0"
 transformers = "^4.37.1"
 nnsight = "^0.2.11"
 tiktoken = "^0.5.2"
@@ -52,10 +52,13 @@ flake8-simplify = "^0.20.0"
 ipdb = "^0.13.13"
 isort = "^5.12.0"
 jupyter-black = "^0.3.4"
+myst-parser = "^3.0.0"
 pip-audit = "^2.5.5"
 pre-commit = "^3.3.2"
-pylint = "^2.17.4"
+pylint = "^3.1.0"
 pytest = "^7.3.1"
+sphinx = "^7.3.7"
+sphinx-autoapi = "^3.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

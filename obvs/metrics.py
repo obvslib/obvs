@@ -34,7 +34,8 @@ class PrecisionAtKMetric(Metric):
             ).repeat(logits.size(0))
         elif (
             torch.is_tensor(true_token_index)
-            and true_token_index.dim() == 0
+            and true_token_index.dim()  # pylint: disable=use-implicit-booleaness-not-comparison-to-zero
+            == 0
             and len(logits.shape) == 2
         ):
             true_token_index = true_token_index.repeat(logits.size(0))
@@ -90,7 +91,8 @@ class SurprisalMetric(Metric):
             ).repeat(logits.size(0))
         elif (
             torch.is_tensor(true_token_index)
-            and true_token_index.dim() == 0
+            and true_token_index.dim()  # pylint: disable=use-implicit-booleaness-not-comparison-to-zero
+            == 0
             and len(logits.shape) == 2
         ):
             true_token_index = true_token_index.repeat(logits.size(0))

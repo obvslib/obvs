@@ -1,0 +1,150 @@
+:py:mod:`obvs.lenses`
+=====================
+
+.. py:module:: obvs.lenses
+
+.. autoapi-nested-parse::
+
+   lenses.py
+
+   Implementation of some widely-known lenses in the Patchscope framework
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   obvs.lenses.TokenIdentity
+   obvs.lenses.BaseLogitLens
+   obvs.lenses.PatchscopeLogitLens
+   obvs.lenses.ClassicLogitLens
+
+
+
+
+.. py:class:: TokenIdentity(source_prompt: str, model_name: str = 'gpt2', source_phrase: str | None = None, device: str | None = None, target_prompt: str | None = None, filename: str | None = None)
+
+
+   Implementation of token identiy patchscope.
+   The logit-lens is defined in the patchscope framework as follows:
+   Target prompt is an identity prompt:
+       T = "bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is"
+   Model is the same as the source model (NB, this can be changed):
+       M = M*  (source model = target model)
+   Target layer is equal to the source layer:
+       l* = l* (target layer = last layer)
+   Source position is specified by the user, target position is -1:
+       i = i*  (source position = target position)
+   Mapping is the identity function:
+       f = id  (mapping = identity function)
+
+   .. py:property:: prompt
+
+
+   .. py:property:: filename
+
+
+   .. py:attribute:: IDENTITIY_PROMPT
+      :value: 'bat is bat; 135 is 135; hello is hello; black is black; shoe is shoe; x is'
+
+
+
+   .. py:method:: run(source_layers: collections.abc.Sequence[int] | None = None, target_layers: collections.abc.Sequence[int] | None = None)
+
+
+   .. py:method:: compute_surprisal(word: str | None = None)
+
+
+   .. py:method:: run_and_compute(source_layers: collections.abc.Sequence[int] | None = None, target_layers: collections.abc.Sequence[int] | None = None, word: str | None = None)
+
+      For larger models, saving the outputs for every layer eats up the GPU memoery. This method
+      runs the patchscope and computes the surprisal in one go, saving memory.
+
+
+   .. py:method:: _nextloop(output, word, i=None, j=None)
+
+
+   .. py:method:: _target_word(word)
+
+
+   .. py:method:: prepare_data_array()
+
+
+   .. py:method:: save_to_file()
+
+
+   .. py:method:: visualize(show: bool = True)
+
+
+
+.. py:class:: BaseLogitLens(model: str, prompt: str, device: str, layers: list[int], substring: str)
+
+
+   Parent class for LogitLenses.
+   Patchscope and classic logit-lens are run differently,
+   but share the same visualization.
+
+   .. py:method:: visualize(kind: str = 'top_logits_preds', file_name: str = '') -> plotly.graph_objects.Figure
+
+      Visualize the logit lens results in one of the following ways:
+              top_logits_preds: Heatmap with the top predicted tokens and their logits
+      Args:
+            kind (str): The kind of visualization
+            file_name (str): If provided, save figure to a file with the given name
+                             (in the current path)
+      Returns (plotly.graph_objects.Figure):
+          The created figure
+
+
+
+.. py:class:: PatchscopeLogitLens(model: str, prompt: str, device: str, layers: list[int], substring: str)
+
+
+   Bases: :py:obj:`BaseLogitLens`
+
+   Implementation of logit-lens in patchscope framework.
+   The logit-lens is defined in the patchscope framework as follows:
+   S = T   (source prompt = target prompt)
+   M = M*  (source model = target model)
+   l* = L* (target layer = last layer)
+   i = i*  (source position = target position)
+   f = id  (mapping = identity function)
+
+   The source layer l and position i can vary.
+
+       In words: The logit-lens maps the hidden state at position i of layer l of the model M
+           to the last layer of that same model. It is equal to taking the hidden state and
+           applying unembed to it.
+
+   .. py:method:: run(position: int)
+
+      Run the logit lens for each layer in layers, for a specific position in the prompt.
+
+      Args:
+          position (int): Position in the prompt for which the lens should be applied
+
+
+
+.. py:class:: ClassicLogitLens(model: str, prompt: str, device: str, layers: list[int], substring: str)
+
+
+   Bases: :py:obj:`BaseLogitLens`
+
+   Implementation of LogitLens in standard fashion.
+   Run a forward pass on the model and apply the final layer norm and unembed to the output of
+   a specific layer to get the logits of that layer.
+   For convenience, use methods from the Patchscope class.
+
+   .. py:method:: run(substring: str, layers: list[int])
+
+      Run the logit lens for each layer in layers and each token in substring.
+
+      Args:
+          substring (str): Substring of the prompt for which the top prediction and logits
+              should be calculated.
+          layers (list[int]): Indices of Transformer Layers for which the lens should be applied
