@@ -26,48 +26,32 @@ model_names = {
     "gemma": "google/gemma-2b",
 }
 
-# Construct the path to the file
 file_path = "data/processed/sentences.json"
 
-# Open and read the file
 with open(file_path) as file:
     data = json.load(file)
 
-# Define the device and model name
 device = "gpu"
 model_name = "gpt2"
-# Load the model
 model = ModelLoader.load(model_names[model_name], device)
-# Load the model configuration
 config = AutoConfig.from_pretrained(model_names[model_name])
-# Get the number of layers
 num_layers = config.num_hidden_layers
-# Define the layers
 layers = list(range(0, num_layers))
-# Define the number of sentences to run
 test_amount = 100
-# Initialize the arrays to store the surprisal values
 surprisals_log_classic_ll = np.zeros((test_amount, num_layers))
 surprisals_log_patchscope_ll = np.zeros((test_amount, num_layers))
 surprisals_log_ti = np.zeros((test_amount, num_layers))
 warnings.filterwarnings("ignore")  # Ignore all warnings
 
-# Loop through the data
 for index, (sentence, _split) in enumerate(tqdm(data[0:test_amount])):
     # Token Identity pre-processing
-    # Truncate sentence for token identity
     truncated_sentence = sentence
-    # Make sure it ends on a space
     truncated_sentence = truncated_sentence[: truncated_sentence.rfind(" ")]
-    # Strip the spaces
     truncated_sentence = truncated_sentence.strip()
 
-    # Tokenize the sentence
     tokenized_sentence = model.tokenizer.encode(sentence)
-    # Get a random position in the sentence
     rand_position = random.randrange(0, len(tokenized_sentence) - 2)
 
-    # Initialize the Token Identity Lens
     ti = TokenIdentity("", model_names[model_name], device="cpu")
     source_layers = range(ti._patchscope.n_layers_source)
     target_layers = range(ti._patchscope.n_layers_target)
@@ -79,15 +63,12 @@ for index, (sentence, _split) in enumerate(tqdm(data[0:test_amount])):
     )
     surprisals_log_ti[index, :] = ti.surprisal
 
-    # Initialize the Classic and Patchscope Logit Lenses
     ClassicLL = ClassicLogitLens(model_names[model_name], sentence, "auto", layers, sentence)
     PatchscopeLL = PatchscopeLogitLens(model_names[model_name], sentence, "auto", layers, sentence)
 
-    # Run the Classic and Patchscope Logit Lenses
     ClassicLL.run(sentence, layers)
     PatchscopeLL.run(rand_position)
 
-    # Compute the surprisal values at the target position
     ClassicLL.target_token_id = tokenized_sentence[rand_position + 1]
     ClassicLL.target_token_position = rand_position
     PatchscopeLL.target_token_id = tokenized_sentence[rand_position + 1]
@@ -95,7 +76,6 @@ for index, (sentence, _split) in enumerate(tqdm(data[0:test_amount])):
     surprisals_across_layers_classic_LL = ClassicLL.compute_surprisal_at_position()
     surprisals_across_layers_patchscope_LL = PatchscopeLL.compute_surprisal_at_position()
 
-    # Store the surprisal values
     surprisals_log_classic_ll[index, :] = surprisals_across_layers_classic_LL
     surprisals_log_patchscope_ll[index, :] = surprisals_across_layers_patchscope_LL
 
@@ -134,20 +114,16 @@ def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
     - csv_filepath: str, the path to the CSV file containing surprisal data.
     - output_html_filepath: str, the path where the HTML file will be saved.
     """
-    # Read data from CSV
     df_total = pd.read_csv(input_csv_path)
 
-    # Separate data for plotting
     df_classic = df_total[df_total["Lens Type"] == "Classic"]
     df_patchscope = df_total[df_total["Lens Type"] == "Patchscope"]
     df_ti = df_total[df_total["Lens Type"] == "Token Identity"]
 
-    # Average surprisal values across sentences for each layer
     classic_means = df_classic.drop(columns=["Lens Type"]).mean()
     patchscope_means = df_patchscope.drop(columns=["Lens Type"]).mean()
     ti_means = df_ti.drop(columns=["Lens Type"]).mean()
 
-    # Create line traces
     trace_classic = go.Scatter(
         x=np.arange(len(classic_means)),
         y=classic_means,
@@ -174,7 +150,6 @@ def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
         line=dict(width=2),
     )
 
-    # Configure the layout of the plot
     layout = go.Layout(
         title="Average Surprisal Values Across Layers",
         xaxis_title="Layer Index",
@@ -184,10 +159,8 @@ def plot_surprisals_and_save_fig(input_csv_path, output_html_path):
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
 
-    # Create figure with data and layout
     fig = go.Figure(data=[trace_classic, trace_patchscope, trace_ti], layout=layout)
 
-    # Save the plot
     fig.write_html(output_html_path)
 
 
