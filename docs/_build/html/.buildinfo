@@ -2,5 +2,5 @@
 
 # This file hashes the configuration used when building these files. When it is not found, a full rebuild will be done.
 
-config: abae0e9d7e2cdbf5edd93123bb758bf3 # pragma: allowlist secret
+config: befd0eb71052fb69df6d1f7fd4aab1d1 # pragma: allowlist secret
 tags: 645f666f9bcd5a90fca523b33c5a78b7 # pragma: allowlist secret

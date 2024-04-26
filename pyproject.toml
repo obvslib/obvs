@@ -31,6 +31,7 @@ datasets = "^2.18.0"
 jupyter = "^1.0.0"
 zstandard = "^0.22.0"
 nbstripout = "^0.7.1"
+sphinx-rtd-theme = "^2.0.0"
 
 [tool.poetry.dev-dependencies]
 # Everything below here is alphabetically sorted

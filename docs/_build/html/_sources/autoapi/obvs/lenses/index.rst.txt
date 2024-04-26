@@ -101,6 +101,11 @@ Classes
           The created figure
 
 
+   .. py:method:: compute_surprisal_at_position()
+
+      Compute the surprisal for a specific position across all layers.
+
+
 
 .. py:class:: PatchscopeLogitLens(model: str, prompt: str, device: str, layers: list[int], substring: str)
 
