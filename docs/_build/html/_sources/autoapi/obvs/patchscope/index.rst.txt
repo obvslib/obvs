@@ -1,0 +1,205 @@
+:py:mod:`obvs.patchscope`
+=========================
+
+.. py:module:: obvs.patchscope
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   obvs.patchscope.SourceContext
+   obvs.patchscope.TargetContext
+   obvs.patchscope.ModelLoader
+   obvs.patchscope.Patchscope
+
+
+
+
+.. py:class:: SourceContext
+
+
+   Source context for the patchscope
+
+   .. py:property:: prompt
+      :type: str | torch.Tensor
+
+      The prompt
+
+
+   .. py:property:: text_prompt
+      :type: str
+
+      The text prompt input or generated from soft prompt
+
+
+   .. py:property:: soft_prompt
+      :type: torch.Tensor | None
+
+      The soft prompt input or None
+
+
+   .. py:attribute:: _prompt
+      :type: str | torch.Tensor
+
+
+
+   .. py:attribute:: _text_prompt
+      :type: str
+
+
+
+   .. py:attribute:: _soft_prompt
+      :type: torch.Tensor | None
+
+
+
+   .. py:attribute:: prompt
+      :type: str | torch.Tensor
+
+
+
+   .. py:attribute:: position
+      :type: collections.abc.Sequence[int] | None
+
+
+
+   .. py:attribute:: layer
+      :type: int
+
+
+
+   .. py:attribute:: head
+      :type: collections.abc.Sequence[int] | None
+
+
+
+   .. py:attribute:: model_name
+      :type: str
+      :value: 'gpt2'
+
+
+
+   .. py:attribute:: device
+      :type: str
+
+
+
+
+.. py:class:: TargetContext
+
+
+   Bases: :py:obj:`SourceContext`
+
+   Target context for the patchscope
+   Parameters identical to the source context, with the addition of
+   a mapping function and max_new_tokens to control generation length
+
+   .. py:attribute:: mapping_function
+      :type: collections.abc.Callable[[torch.Tensor], torch.Tensor]
+
+
+
+   .. py:attribute:: max_new_tokens
+      :type: int
+      :value: 10
+
+
+
+   .. py:method:: from_source(source: SourceContext, mapping_function: collections.abc.Callable[[torch.Tensor], torch.Tensor] | None = None, max_new_tokens: int = 10) -> TargetContext
+      :staticmethod:
+
+      Construct a target context from the source context
+
+
+
+.. py:class:: ModelLoader
+
+
+   .. py:method:: load(model_name: str, device: str) -> nnsight.LanguageModel
+      :staticmethod:
+
+
+
+.. py:class:: Patchscope(source: SourceContext, target: TargetContext)
+
+
+   Bases: :py:obj:`obvs.patchscope_base.PatchscopeBase`
+
+   A base class with lots of helper functions
+
+   .. py:attribute:: REMOTE
+      :type: bool
+      :value: False
+
+
+
+   .. py:method:: source_forward_pass() -> None
+
+      Get the source representation.
+
+      We use the 'trace' context so we can add the REMOTE option.
+
+      For each architecture, you need to know the name of the layers.
+
+
+   .. py:method:: manipulate_source() -> torch.Tensor
+
+      Get the hidden state from the source representation.
+
+      NB: This is seperated out from the source_forward_pass method to allow for batching.
+
+
+   .. py:method:: map() -> None
+
+      Apply the mapping function to the source representation
+
+
+   .. py:method:: target_forward_pass() -> None
+
+      Patch the target representation.
+      In order to support multi-token generation,
+      we save the output for max_new_tokens iterations.
+
+      We use a the 'generate' context which support remote operation and multi-token generation
+
+      For each architecture, you need to know the name of the layers.
+
+
+   .. py:method:: manipulate_target() -> None
+
+
+   .. py:method:: check_patchscope_setup() -> bool
+
+      Check if patchscope is correctly set-up before running
+
+
+   .. py:method:: run() -> None
+
+      Run the patchscope
+
+
+   .. py:method:: clear() -> None
+
+      Clear the outputs and the cache
+
+
+   .. py:method:: over(source_layers: collections.abc.Sequence[int], target_layers: collections.abc.Sequence[int]) -> list[torch.Tensor]
+
+      Run the patchscope over the specified set of layers.
+
+      :param source_layers: A list of layer indices or a range of layer indices.
+      :param target_layers: A list of layer indices or a range of layer indices.
+      :return: A source_layers x target_layers x max_new_tokens list of outputs.
+
+
+   .. py:method:: over_pairs(source_layers: collections.abc.Sequence[int], target_layers: collections.abc.Sequence[int]) -> list[torch.Tensor]
+
+      Run the patchscope over the specified set of layers in pairs
+      :param source_layers: A list of layer indices or a range of layer indices.
+      :param target_layers: A list of layer indices or a range of layer indices.
+      :return: A source_layers x target_layers x max_new_tokens list of outputs.

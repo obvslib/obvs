@@ -1,0 +1,30 @@
+:py:mod:`obvs`
+==============
+
+.. py:module:: obvs
+
+.. autoapi-nested-parse::
+
+   Module entrypoint.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   lenses/index.rst
+   logging/index.rst
+   metrics/index.rst
+   patchscope/index.rst
+   patchscope_base/index.rst
+   vis/index.rst
+
+
+Package Contents
+----------------
+
+.. py:data:: __version__
+   :value: '0.1.0'

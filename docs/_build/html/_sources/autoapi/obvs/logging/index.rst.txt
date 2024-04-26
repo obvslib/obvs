@@ -1,0 +1,70 @@
+:py:mod:`obvs.logging`
+======================
+
+.. py:module:: obvs.logging
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   obvs.logging.TqdmLoggingHandler
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   obvs.logging.set_tqdm_logging
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   obvs.logging.logger
+   obvs.logging.file_handler
+   obvs.logging.file_formatter
+
+
+.. py:class:: TqdmLoggingHandler
+
+
+   Bases: :py:obj:`logging.Handler`
+
+   Handler instances dispatch logging events to specific destinations.
+
+   The base handler class. Acts as a placeholder which defines the Handler
+   interface. Handlers can optionally use Formatter instances to format
+   records as desired. By default, no formatter is specified; in this case,
+   the 'raw' message as determined by record.message is logged.
+
+   .. py:method:: emit(record)
+
+      Do whatever it takes to actually log the specified logging record.
+
+      This version is intended to be implemented by subclasses and so
+      raises a NotImplementedError.
+
+
+
+.. py:function:: set_tqdm_logging(exclude_loggers=None)
+
+
+.. py:data:: logger
+
+
+
+.. py:data:: file_handler
+
+
+
+.. py:data:: file_formatter

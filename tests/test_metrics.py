@@ -35,7 +35,7 @@ def test_precision_at_k_metric_no_correct_prediction():
     metric.update(logits, true_token_index)
     assert metric.correct.int().tolist() == [0, 0]
     assert metric.total == 2
-    assert metric.compute() == 0.0
+    assert metric.compute() == 0.0  # pylint: disable=use-implicit-booleaness-not-comparison-to-zero
 
 
 def test_precision_at_k_metric_topk_2():

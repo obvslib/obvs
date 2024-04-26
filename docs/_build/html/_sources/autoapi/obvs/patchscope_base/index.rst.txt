@@ -1,0 +1,212 @@
+:py:mod:`obvs.patchscope_base`
+==============================
+
+.. py:module:: obvs.patchscope_base
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   obvs.patchscope_base.PatchscopeBase
+
+
+
+
+.. py:class:: PatchscopeBase
+
+
+   Bases: :py:obj:`abc.ABC`
+
+   A base class with lots of helper functions
+
+   .. py:property:: _source_position
+      :type: collections.abc.Sequence[int]
+
+
+   .. py:property:: _target_position
+      :type: collections.abc.Sequence[int]
+
+
+   .. py:property:: source_token_ids
+      :type: list[int]
+
+      Return the source tokens
+
+
+   .. py:property:: target_token_ids
+      :type: list[int]
+
+      Return the target tokens
+
+
+   .. py:property:: source_tokens
+      :type: list[str]
+
+      Return the input to the source model
+
+
+   .. py:property:: target_tokens
+      :type: list[str]
+
+      Return the input to the target model
+
+
+   .. py:property:: n_layers
+      :type: int
+
+
+   .. py:property:: n_layers_source
+      :type: int
+
+
+   .. py:property:: n_layers_target
+      :type: int
+
+
+   .. py:method:: get_model_specifics(model_name)
+
+      Get the model specific attributes.
+      The following works for gpt2, llama2 and mistral models.
+
+
+   .. py:method:: source_forward_pass() -> None
+      :abstractmethod:
+
+
+   .. py:method:: map() -> None
+      :abstractmethod:
+
+
+   .. py:method:: target_forward_pass() -> None
+      :abstractmethod:
+
+
+   .. py:method:: run() -> None
+      :abstractmethod:
+
+
+   .. py:method:: top_k_tokens(k: int = 10) -> list[str]
+
+      Return the top k tokens from the target model
+
+
+   .. py:method:: top_k_logits(k: int = 10) -> list[int]
+
+      Return the top k logits from the target model
+
+
+   .. py:method:: top_k_probs(k: int = 10) -> list[float]
+
+      Return the top k probabilities from the target model
+
+
+   .. py:method:: logits() -> torch.Tensor
+
+      Return the logits from the target model (size [pos, d_vocab])
+
+
+   .. py:method:: probabilities() -> torch.Tensor
+
+      Return the probabilities from the target model (size [pos, d_vocab])
+
+
+   .. py:method:: output() -> list[str]
+
+      Return the generated output from the target model
+
+
+   .. py:method:: _output_token_ids() -> list[int]
+
+
+   .. py:method:: llama_output() -> list[str]
+
+      For llama, if you don't decode them all together, they don't add the spaces.
+
+
+   .. py:method:: full_output_tokens() -> list[str]
+
+      Return the generated output from the target model
+      This is a bit hacky. Its not super well supported. I have to concatenate
+      all the inputs and add the input tokens to them.
+
+
+   .. py:method:: full_output() -> str
+
+      Return the generated output from the target model
+      This is a bit hacky. Its not super well supported.
+      I have to concatenate all the inputs and add the input tokens to them.
+
+
+   .. py:method:: find_in_source(substring: str) -> int
+
+      Find the position of the substring tokens in the source prompt
+
+      Note: only works if substring's tokenization happens to match that of
+      the source prompt's tokenization
+
+
+   .. py:method:: source_position_tokens(substring: str) -> tuple[int, list[int]]
+
+      Find the position of a substring in the source prompt, and return the
+      substring tokenized
+
+      NB: The try: except block handles the difference between gpt2 and llama
+      tokenization. Perhaps this can be better dealt with a seperate tokenizer
+      class that handles the differences between the tokenizers. There are a
+      few subtleties there, and tokenizing properly is important for getting
+      the best out of your model.
+
+
+   .. py:method:: find_in_target(substring: str) -> int
+
+      Find the position of the substring tokens in the target prompt
+
+      Note: only works if substring's tokenization happens to match that of
+      the target prompt's tokenization
+
+
+   .. py:method:: target_position_tokens(substring) -> tuple[int, list[int]]
+
+      Find the position of a substring in the target prompt, and return the
+      substring tokenized
+
+      NB: The try: except block handles the difference between gpt2 and llama
+      tokenization. Perhaps this can be better dealt with a seperate tokenizer
+      class that handles the differences between the tokenizers. There are a
+      few subtleties there, and tokenizing properly is important for getting
+      the best out of your model.
+
+
+   .. py:method:: compute_precision_at_1(estimated_probs: torch.Tensor, true_token_index)
+
+      Compute Precision@1 metric. From the outputs of the target (patched) model
+      (estimated_probs) against the output of the source model, aka the 'true' token.
+      Args:
+      - estimated_probs: The estimated probabilities for each token as a torch.Tensor.
+      - true_token_index: The index of the true token in the vocabulary.
+      Returns:
+      - precision_at_1: Precision@1 metric result.
+
+      This is the evaluation method of the token identity from patchscopes:
+      https://arxiv.org/abs/2401.06102
+      Its used for running an evaluation over large datasets.
+
+
+   .. py:method:: compute_surprisal(estimated_probs: torch.Tensor, true_token_index)
+
+      Compute Surprisal metric. From the outputs of the target (patched) model
+      (estimated_probs) against the output of the source model, aka the 'true'
+      token.
+
+      Args:
+      - estimated_probs: The estimated probabilities for each token as a
+      torch.Tensor.
+      - true_token_index: The index of the true token in the vocabulary.
+
+      Returns:
+      - surprisal: Surprisal metric result.
