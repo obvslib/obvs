@@ -36,6 +36,7 @@ nbstripout = "^0.7.1"
 # Everything below here is alphabetically sorted
 bandit = "^1.7.5"
 black = "^24.3.0"
+bump2version = "^1.0.1"
 detect-secrets = "1.2.0"
 flake8 = "5.0.4"
 flake8-bugbear = "^23.3.12"
