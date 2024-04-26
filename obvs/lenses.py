@@ -307,6 +307,35 @@ class BaseLogitLens:
             fig.write_html(f'{file_name.replace(".html", "")}.html')
         return fig
 
+    def compute_surprisal_at_position(self):
+        """
+        Compute the surprisal for a specific position across all layers.
+        """
+        if "logits" not in self.data:
+            raise ValueError("Logits data not found. Please run the lens first.")
+
+        # Assuming target_token_ids is known and corresponds to the actual token ID at target_position
+        # For this example, we assume a single target token ID for simplicity.
+        # In a real scenario, this would be dynamic or calculated based on input sequence.
+        target_token_id = (
+            self.target_token_id
+        )  # This should be set or calculated based on your specific use case.
+        target_position = self.target_token_position
+        logits_at_position = self.data["logits"][
+            :,
+            target_position,
+            :,
+        ]  # Shape: (n_layers, d_vocab)
+        probabilities_at_position = torch.softmax(torch.tensor(logits_at_position), dim=-1)
+
+        # Probability of the actual next token at the given position, for all layers
+        actual_token_probabilities = probabilities_at_position[:, target_token_id]
+
+        # Surprisal calculation: negative log probability
+        surprisals = -torch.log(actual_token_probabilities)
+
+        return surprisals.numpy()  # Convert to numpy array for convenience
+
 
 class PatchscopeLogitLens(BaseLogitLens):
     """Implementation of logit-lens in patchscope framework.
@@ -334,7 +363,7 @@ class PatchscopeLogitLens(BaseLogitLens):
         self.data["logits"] = torch.zeros(
             len(self.layers),
             len(self.substring_tokens),
-            self.patchscope.tokenizer.vocab_size,
+            self.patchscope.source_model.lm_head.out_features,  # not vocab size, as gpt-j embedding dimension different to tokenizer vocab size
         )
 
     def run(self, position: int):
@@ -386,10 +415,11 @@ class ClassicLogitLens(BaseLogitLens):
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
         # initialize tensor for logits
+
         self.data["logits"] = torch.zeros(
             len(layers),
             len(substring_tokens),
-            self.patchscope.tokenizer.vocab_size,
+            self.patchscope.source_model.lm_head.out_features,  # not vocab size, as gpt-j embedding dimension different to tokenizer vocab size
         )
 
         # loop over all layers

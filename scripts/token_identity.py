@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datasets import load_dataset
+import json
 
 from obvs.lenses import TokenIdentity
 from obvs.vis import create_heatmap, plot_surprisal
@@ -17,14 +17,15 @@ model_names = {
 
 
 def main(model_name, n_samples=5, full=False):
-    dataset = load_dataset("oscar-corpus/OSCAR-2201", "en", split="train", streaming=True)
-    shuffled_dataset = dataset.shuffle(seed=43, buffer_size=n_samples)
+    file_path = "data/processed/sentences.json"
+    # Open and read the file
+    with open(file_path) as file:
+        data = json.load(file)
 
     samples = []
-    for example in shuffled_dataset.take(n_samples):
-        samples.append(example["text"])
+    for sentence, _ in data[0:n_samples]:
+        samples.append(sentence)
 
-    # Trim the samples to the first 300 characters
     samples = [sample[:1000] for sample in samples]
 
     # Make sure it ends on a space
@@ -47,7 +48,7 @@ def main(model_name, n_samples=5, full=False):
         ti.run_and_compute(
             source_layers=source_layers,
             target_layers=target_layers if full else None,
-        ).visualize()
+        ).visualize(show=False)
         surprisals.append(ti.surprisal)
 
     # Average the surprisals, calculate the standard deviation and plot with plotly
@@ -62,10 +63,9 @@ def main(model_name, n_samples=5, full=False):
             ti.source_layers,
             mean_surprisal,
             std_surprisal,
-            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus",
+            f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from ELeutherAI/the_pile_deduplicated",
         )
         fig.write_html(f"mean_surprisal_heatmap_{model_name}_{len(samples)}_samples.html")
-        fig.show()
 
     elif len(surprisals[0].shape) == 2:
         # Its a set of layers for each token, meaning a heatmap. We dont botther with the std
@@ -78,7 +78,6 @@ def main(model_name, n_samples=5, full=False):
             f"{model_name} Surprisal of the first 1000 characters of {n_samples} random samples from the OSCAR corpus",
         )
         fig.write_html(f"mean_surprisal_heatmap_{model_name}_{len(samples)}_samples.html")
-        fig.show()
 
 
 if __name__ == "__main__":
