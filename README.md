@@ -83,7 +83,7 @@ Make sure you have Python 3.10 or above and the required dependencies installed.
 
 ## Release History
 
--   0.1.1
+-   0.1.2
     -   Initial release of the `obvs` library
     -   Includes `patchscope`, `patchscope_base`, `lenses`, `logging`, and `metrics` modules
     -   Provides a collection of scripts for reproducing standard results
