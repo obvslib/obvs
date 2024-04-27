@@ -56,7 +56,7 @@ patchscope.run()
 print(patchscope.full_output())
 ```
 
-For more examples and usage, please refer to the [documentation](https://obvs.rtfd.io/) and [PyPI](https://pypi.org/project/obvs/).
+For more examples and usage, please refer to the [tutorials](https://github.com/obvslib/obvs/tree/main/tutorials), [documentation](https://obvs.rtfd.io/), and [PyPI](https://pypi.org/project/obvs/).
 
 ## Development setup
 
@@ -64,29 +64,29 @@ To set up the development environment for `obvs`, follow these steps:
 
 1. Clone the repository:
 
-   ```
-   git clone https://github.com/yourname/obvs.git
-   ```
+    ```
+    git clone https://github.com/yourname/obvs.git
+    ```
 
 2. Install the development dependencies:
 
-   ```
-   poetry install --no-root --sync
-   ```
+    ```
+    poetry install --no-root --sync
+    ```
 
 3. Run the test suite:
-   ```
-   pytest tests/
-   ```
+    ```
+    pytest tests/
+    ```
 
 Make sure you have Python 3.10 or above and the required dependencies installed.
 
 ## Release History
 
-- 0.1.1
-  - Initial release of the `obvs` library
-  - Includes `patchscope`, `patchscope_base`, `lenses`, `logging`, and `metrics` modules
-  - Provides a collection of scripts for reproducing standard results
+-   0.1.1
+    -   Initial release of the `obvs` library
+    -   Includes `patchscope`, `patchscope_base`, `lenses`, `logging`, and `metrics` modules
+    -   Provides a collection of scripts for reproducing standard results
 
 ## Meta
 
