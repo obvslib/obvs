@@ -8,6 +8,9 @@
 !**/data/**/README.md
 !**/data/**/*.gitkeep
 
+# Distribution
+dist/
+
 # Secrets
 .env
 
