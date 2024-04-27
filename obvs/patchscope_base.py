@@ -1,5 +1,5 @@
 """
-Patchscope Base Module
+🩺 Patchscope Base Module
 
 This module provides a base class `PatchscopeBase` with helper functions and abstract methods
 for implementing patchscope-based models. Patchscope is a technique used for evaluating and
@@ -7,12 +7,19 @@ analyzing language models by comparing the outputs of a source model with a targ
 
 The `PatchscopeBase` class offers the following functionality:
 - Retrieving model-specific attributes based on the model name
+
 - Abstract methods for performing forward passes on the source and target models
+
 - Abstract methods for mapping and running the patchscope process
+
 - Properties for accessing source and target token IDs and tokens
+
 - Methods for retrieving top-k tokens, logits, and probabilities from the target model
+
 - Methods for finding the position of a substring in the source and target prompts
+
 - Properties for accessing the number of layers in the source and target models
+
 - Methods for computing Precision@1 and Surprisal metrics
 
 Subclasses of `PatchscopeBase` should implement the abstract methods to provide the specific

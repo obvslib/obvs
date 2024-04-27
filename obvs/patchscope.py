@@ -3,8 +3,10 @@
 
 Implementation of the patchscopes framework: https://arxiv.org/abs/2401.06102
 
-This is the main patchscopes module. It uses some of the functionality from the abstract base class called patchscopes base.
 Patchscopes are a powerful way to understand and explain how large language models (LLMs) work on the inside. They use the model's own ability to generate text that humans can understand to interpret and explain what's happening in the model's hidden layers. By using one language model (the target model) to analyze and explain the inner workings of another language model (the source model), patchscopes provide a way to bring together different existing techniques for understanding models while also allowing for new possibilities and uses.
+
+This is the main patchscopes module. It uses some of the functionality from the abstract base class called patchscopes base.
+
 Patchscopes base takes a representation like this:
 
 (S, i, M, ℓ) corresponds to the source from which the original hidden representation is drawn.
