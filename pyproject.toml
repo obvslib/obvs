@@ -3,7 +3,7 @@
 ###########
 [tool.poetry]
 name = "obvs"
-version = "0.0.1"
+version = "0.1.0"
 description = "Making Transformers Obvious"
 authors = ["Jamie Coombes <jamie@example.com>"]
 license = "MIT"
