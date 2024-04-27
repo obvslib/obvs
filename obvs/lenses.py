@@ -1,5 +1,6 @@
 """
 Lenses Module
+
 This module implements various lenses within the Patchscope framework for analyzing and interpreting language models.
 Lenses are techniques that allow for probing and understanding the internal representations and behaviors of language models at different layers and positions. They provide insights into how the model processes and generates text.
 The module includes the following lenses:
