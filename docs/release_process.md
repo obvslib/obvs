@@ -47,7 +47,7 @@ poetry cache clear pypi --all
 pre-commit run --all-files --hook-stage=manual
 
 # Bump the version number
-# - bump2version will update the version number, create a commit, and tag it with vx.y.z
+# - bump2version will update the version number, create a commit, and tag it with `vMAJOR.MINOR.PATCH`
 bump2version patch # or minor or major
 
 # Publish to PyPI:
