@@ -1,34 +1,43 @@
-# Implementation of the patchscopes framework: https://arxiv.org/abs/2401.06102
-# Patchscopes takes a representation like so:
-# - (S, i, M, ℓ) corresponds to the source from which the original hidden representation is drawn.
-#   - S is the source input sequence.
-#   - i is the position within that sequence.
-#           NB: We extend the method to allow a range of positions
-#   - M is the original model that processes the sequence.
-#   - ℓ is the layer in model M from which the hidden representation is taken.
-#
-# and patches it to a target context like so:
-# - (T, i*, f, M*, ℓ*) defines the target context for the intervention (patching operation).
-#   - T is the target prompt, which can be different from the source prompt S or the same.
-#   - i* is the position in the target prompt that will receive the patched representation.
-#           NB: We extend the method to allow a range of positions
-#   - f is the mapping function that operates on the hidden representation to possibly transform
-#       it before it is patched into the target context. It can be a simple identity function or a more complex transformation.
-#   - M* is the model (which could be the same as M or different) in which the patching operation is performed.
-#   - ℓ* is the layer in the target model M* where the hidden representation h̅ᵢˡ* will be replaced with the patched version.
-#
-# The simplest patchscope is defined by the following parameters:
-# - S = T
-# - i = i*
-# - M = M*
-# - ℓ = ℓ*
-# - f = identity function
-# this be indistinguishable from a forward pass.
-#
-# The most simple one that does something interesting is the logit lens, where:
-# - ℓ = range(L*)
-# - ℓ* = L*
-# Meaning, we take the hidden representation from each layer of the source model and patch it into the final layer of the target model.
+"""
+🩺 Patchscope Module.
+
+Implementation of the patchscopes framework: https://arxiv.org/abs/2401.06102
+
+This is the main patchscopes module. It uses some of the functionality from the abstract base class called patchscopes base.
+Patchscopes are a powerful way to understand and explain how large language models (LLMs) work on the inside. They use the model's own ability to generate text that humans can understand to interpret and explain what's happening in the model's hidden layers. By using one language model (the target model) to analyze and explain the inner workings of another language model (the source model), patchscopes provide a way to bring together different existing techniques for understanding models while also allowing for new possibilities and uses.
+Patchscopes base takes a representation like this:
+
+(S, i, M, ℓ) corresponds to the source from which the original hidden representation is drawn.
+S is the source input sequence.
+i is the position within that sequence. NB: We extend the method to allow a range of positions
+M is the original model that processes the sequence.
+ℓ is the layer in model M from which the hidden representation is taken.
+
+and patches it to a target context like this:
+
+(T, i*, f, M*, ℓ*) defines the target context for the intervention (patching operation).
+T is the target prompt, which can be different from the source prompt S or the same.
+i* is the position in the target prompt that will receive the patched representation. NB: We extend the method to allow a range of positions
+f is the mapping function that operates on the hidden representation to possibly transform it before it is patched into the target context. It can be a simple identity function or a more complex transformation.
+M* is the model (which could be the same as M or different) in which the patching operation is performed.
+ℓ* is the layer in the target model M* where the hidden representation h̅ᵢˡ* will be replaced with the patched version.
+
+The simplest patchscopes base is defined by the following parameters:
+
+S = T
+i = i*
+M = M*
+ℓ = ℓ*
+f = identity function
+
+this be indistinguishable from a forward pass.
+The most simple one that does something interesting is the logit lens, where:
+
+ℓ = range(L*)
+ℓ* = L*
+
+Meaning, we take the hidden representation from each layer of the source model and patch it into the final layer of the target model. This is useful for output prediction tasks, as it allows us to understand how the hidden representations from different layers of the source model contribute to the final output of the target model.
+"""
 
 from __future__ import annotations
 

@@ -1,9 +1,24 @@
 """
-lenses.py
+Lenses Module
+This module implements various lenses within the Patchscope framework for analyzing and interpreting language models.
+Lenses are techniques that allow for probing and understanding the internal representations and behaviors of language models at different layers and positions. They provide insights into how the model processes and generates text.
+The module includes the following lenses:
 
-Implementation of some widely-known lenses in the Patchscope framework
+TokenIdentity: This lens maps a source representation to a target representation while keeping the same model and layer. It is useful for analyzing the model's behavior when processing the same input at different positions.
+BaseLogitLens: This is an abstract base class for implementing logit lenses. Logit lenses analyze the model's output logits at different layers and positions to understand how the predictions evolve across the model.
+
+PatchscopeLogitLens: This lens implements the logit lens using the Patchscope framework. It maps the hidden state from a specific layer and position of the source model to the last layer of the same model.
+ClassicLogitLens: This lens implements the logit lens in a standard fashion by running a forward pass on the model and applying the final layer norm and unembedding to the output of a specific layer.
+
+
+
+The lenses provide methods for running the analysis, computing metrics such as surprisal and precision@1, and visualizing the results using heatmaps and plots.
+To use a lens, create an instance of the desired lens class, specifying the model, prompt, device, layers, and substring of interest. Then, call the run method to execute the lens analysis and access the results through the lens object's attributes.
+Example usage:
+pythonCopy codetoken_identity = TokenIdentity(source_prompt="The quick brown fox", model_name="gpt2", source_phrase="quick brown")
+token_identity.run().compute_surprisal("fox").visualize()
+This module relies on the Patchscope class from the obvs.patchscope module for the underlying implementation of the Patchscope framework.
 """
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -227,6 +242,8 @@ class BaseLogitLens:
     """Parent class for LogitLenses.
     Patchscope and classic logit-lens are run differently,
     but share the same visualization.
+
+    This dual implementation allowed comparison at the design stage.
     """
 
     def __init__(self, model: str, prompt: str, device: str, layers: list[int], substring: str):
@@ -307,35 +324,6 @@ class BaseLogitLens:
             fig.write_html(f'{file_name.replace(".html", "")}.html')
         return fig
 
-    def compute_surprisal_at_position(self):
-        """
-        Compute the surprisal for a specific position across all layers.
-        """
-        if "logits" not in self.data:
-            raise ValueError("Logits data not found. Please run the lens first.")
-
-        # Assuming target_token_ids is known and corresponds to the actual token ID at target_position
-        # For this example, we assume a single target token ID for simplicity.
-        # In a real scenario, this would be dynamic or calculated based on input sequence.
-        target_token_id = (
-            self.target_token_id
-        )  # This should be set or calculated based on your specific use case.
-        target_position = self.target_token_position
-        logits_at_position = self.data["logits"][
-            :,
-            target_position,
-            :,
-        ]  # Shape: (n_layers, d_vocab)
-        probabilities_at_position = torch.softmax(torch.tensor(logits_at_position), dim=-1)
-
-        # Probability of the actual next token at the given position, for all layers
-        actual_token_probabilities = probabilities_at_position[:, target_token_id]
-
-        # Surprisal calculation: negative log probability
-        surprisals = -torch.log(actual_token_probabilities)
-
-        return surprisals.numpy()  # Convert to numpy array for convenience
-
 
 class PatchscopeLogitLens(BaseLogitLens):
     """Implementation of logit-lens in patchscope framework.
@@ -363,7 +351,7 @@ class PatchscopeLogitLens(BaseLogitLens):
         self.data["logits"] = torch.zeros(
             len(self.layers),
             len(self.substring_tokens),
-            self.patchscope.source_model.lm_head.out_features,  # not vocab size, as gpt-j embedding dimension different to tokenizer vocab size
+            self.patchscope.tokenizer.vocab_size,
         )
 
     def run(self, position: int):
@@ -415,11 +403,10 @@ class ClassicLogitLens(BaseLogitLens):
         start_pos, substring_tokens = self.patchscope.source_position_tokens(substring)
 
         # initialize tensor for logits
-
         self.data["logits"] = torch.zeros(
             len(layers),
             len(substring_tokens),
-            self.patchscope.source_model.lm_head.out_features,  # not vocab size, as gpt-j embedding dimension different to tokenizer vocab size
+            self.patchscope.tokenizer.vocab_size,
         )
 
         # loop over all layers

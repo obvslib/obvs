@@ -1,3 +1,24 @@
+"""
+Metrics Module
+
+This module provides classes for computing various metrics related to language modeling tasks.
+
+Classes:
+    PrecisionAtK: Computes the Precision@k metric for a batch of estimated probabilities vs true token indices.
+                  The update method takes in the top-k predicted token indices and the true token indices for each
+                  example in the batch. The compute method returns the Precision@k metric result for the accumulated
+                  batches, where a correct prediction is considered if the true token is present anywhere in the
+                  top-k predictions.
+
+    Surprisal: Computes the Surprisal metric for a batch of estimated probabilities vs true token indices.
+               The update method takes in the estimated probabilities and the true token indices for each example
+               in the batch. The compute method returns the average Surprisal metric result for the accumulated
+               batches.
+
+These classes can be used to evaluate the performance of language models by measuring the accuracy of their
+predictions and the surprise factor of the true tokens given the estimated probabilities.
+"""
+
 from __future__ import annotations
 
 import torch
