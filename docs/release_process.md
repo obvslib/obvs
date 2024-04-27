@@ -1,13 +1,43 @@
 # Release Process
 
+## 0. One-time Setup
+
+To publish packages to PyPI and Test PyPI, you need to configure Poetry.
+The following instructions are adapted from https://stackoverflow.com/a/72524326.
+
+PyPI:
+
+1. Get a token from https://pypi.org/manage/account/token/
+2. Store the token:
+
+```bash
+poetry config pypi-token.pypi <token>
+```
+
+Test PyPI:
+
+1. Add Test PyPI repository:
+
+```bash
+poetry config repositories.test-pypi https://test.pypi.org/legacy/
+```
+
+2. Get a token from https://test.pypi.org/manage/account/token/
+3. Store the token:
+
+```bash
+poetry config pypi-token.test-pypi <token>
+```
+
 ## 1. CLI Steps
 
 Sourcetree has great built-in support for Git Flow from the `Repository > Git flow` menu. We list
 the commands below, but this can also be done via the GUI if you prefer.
 
 ```sh
-# Ensure your working copy is clean before starting (e.g. stash any WIP).
-# Fetch & pull latest origin/main
+# Update working copy
+# - Ensure your working copy is clean before starting (e.g. stash any WIP).
+# - Fetch & pull latest origin/main
 git checkout main && git pull
 
 # (Optional) pre-commit
@@ -16,15 +46,17 @@ git checkout main && git pull
 poetry cache clear pypi --all
 pre-commit run --all-files --hook-stage=manual
 
-# Update project version number
-# bump2version will update the version number, create a commit, and tag it with vx.y.z
+# Bump the version number
+# - bump2version will update the version number, create a commit, and tag it with vx.y.z
 bump2version patch # or minor or major
 
-# Build and publish to PyPI
+# Publish to PyPI:
+# - Build and publish to PyPI
+# - To publish to Test PyPI instead, use `poetry publish -r test-pypi`
 poetry build
 poetry publish
 
-# Update origin
+# Update remote repo
 git push
 git push origin --tags
 ```
