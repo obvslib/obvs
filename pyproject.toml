@@ -8,6 +8,7 @@ description = "Making Transformers Obvious"
 authors = ["Jamie Coombes <jamie@example.com>"]
 license = "MIT"
 packages = [{ include = "obvs" }]
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10.0"
