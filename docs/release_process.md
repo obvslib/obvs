@@ -1,11 +1,33 @@
 # Release Process
 
-> This process follows [this Git Flow release model](https://nvie.com/posts/a-successful-git-branching-model/).
-> There is an excellent [Git Flow cheatsheet here](https://danielkummer.github.io/git-flow-cheatsheet/).
-> You will need to install the Git Flow helper extension: `brew install git-flow-avh` and
-> initialise your repo (see the cheatsheet above, or this can also be done from within Sourcetree).
+## 0. One-time Setup
 
-**Replace VERSION with the relevant milestone, e.g. `0.3`**
+To publish packages to PyPI and Test PyPI, you need to configure Poetry.
+The following instructions are adapted from https://stackoverflow.com/a/72524326.
+
+PyPI:
+
+1. Get a token from https://pypi.org/manage/account/token/
+2. Store the token:
+
+```bash
+poetry config pypi-token.pypi <token>
+```
+
+Test PyPI:
+
+1. Add Test PyPI repository:
+
+```bash
+poetry config repositories.test-pypi https://test.pypi.org/legacy/
+```
+
+2. Get a token from https://test.pypi.org/manage/account/token/
+3. Store the token:
+
+```bash
+poetry config pypi-token.test-pypi <token>
+```
 
 ## 1. CLI Steps
 
@@ -13,33 +35,10 @@ Sourcetree has great built-in support for Git Flow from the `Repository > Git fl
 the commands below, but this can also be done via the GUI if you prefer.
 
 ```sh
-# Ensure your working copy is clean before starting (e.g. stash any WIP).
-# Fetch & pull latest origin/develop
-git fetch && git checkout develop && git pull
-
-# Locally, start a new release
-git flow release start VERSION
-
-# Summary of actions:
-# - A new branch 'release/VERSION' was created, based on 'develop'
-# - You are now on branch 'release/VERSION'
-
-# Follow-up actions:
-# - Bump the version number now!
-# - Start committing last-minute fixes in preparing your release (e.g. towncrier)
-# - Use amend commits here if possible to keep commits to a minimum
-#   git commit --amend -m "updated commit message"
-# - You don't have to push the release branch unless a) you'd like it reviewed, b) to run CI, c) others may wish to add commits to this release.
-
-# Towncrier update
-# - Review all towncrier entries.
-# - Any missing vs issues closed within the milestone (don't forget bugs & maintenance)? Do the entries look good?
-# - (Optional) towncrier preview: `towncrier build --version=VERSION --draft`
-# - Publish towncrier update: `towncrier build --version=VERSION`
-# - Add any additional notes to the CHANGELOG.md as required
-
-# Update project version number
-# - This is in [poetry] section at the top of pyproject.toml
+# Update working copy
+# - Ensure your working copy is clean before starting (e.g. stash any WIP).
+# - Fetch & pull latest origin/main
+git checkout main && git pull
 
 # (Optional) pre-commit
 # - You shouldn't need to run pre-commit unless you've changed things manually
@@ -47,32 +46,19 @@ git flow release start VERSION
 poetry cache clear pypi --all
 pre-commit run --all-files --hook-stage=manual
 
-# Commit & amend commit as required
+# Bump the version number
+# - bump2version will update the version number, create a commit, and tag it with `vMAJOR.MINOR.PATCH`
+bump2version patch # or minor or major
 
-# (Optional) If others have commits to add to this release, you can push as follows
-git flow release publish VERSION
+# Publish to PyPI:
+# - Build and publish to PyPI
+# - To publish to Test PyPI instead, use `poetry publish -r test-pypi`
+poetry build
+poetry publish
 
-# Complete the release by merging back into `main` and `develop`
-# - Add -k if you do not want to auto-delete the release branch
-# - Add -p if you want to auto-push to origin
-# - Just use "Release VERSION" as commit messages
-git flow release finish -n VERSION
-
-# Summary of actions:
-# - Release branch 'release/VERSION' has been merged into 'main'
-# - Master branch 'main' has been back-merged into 'develop'
-# - Release branch 'release/VERSION' is still locally available
-# - You are now on branch 'develop'
-
-# Tag the release
-git checkout main
-git tag VERSION
+# Update remote repo
+git push
 git push origin --tags
-
-# Check everything over, if you're happy, push `develop`, push `main` and delete your release branch.
-git checkout develop && git push
-git checkout main && git push
-git branch -D release/VERSION
 ```
 
 ## 2. GitHub Steps
